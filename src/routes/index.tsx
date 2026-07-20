@@ -1,24 +1,36 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-2xl w-full text-center bg-card rounded-2xl shadow-xl border border-border p-10">
+        <div className="text-sm font-medium text-primary mb-2">ניהול הישיבה</div>
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+          מערכת ניהול נוכחות ומעקב לישיבות
+        </h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          העלאה של דוחות סרוקים, זיהוי אוטומטי של סימוני נוכחות, מעקב אישי אחר כל בחור, וניהול טיפולים ומשימות — הכל במקום אחד.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <Link
+            to="/auth"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground hover:opacity-90 transition"
+          >
+            כניסה למערכת
+          </Link>
+          <Link
+            to="/auth"
+            search={{ mode: "signup" as const }}
+            className="inline-flex items-center justify-center rounded-md border border-border bg-background px-6 py-3 text-base font-medium text-foreground hover:bg-accent transition"
+          >
+            הרשמה
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
