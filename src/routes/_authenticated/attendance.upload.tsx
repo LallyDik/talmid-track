@@ -100,7 +100,7 @@ function UploadPage() {
 
       await supabase
         .from("attendance_reports")
-        .update({ processing_status: "needs_review", ocr_raw_result: raw })
+        .update({ processing_status: "needs_review", ocr_raw_result: raw as unknown as Record<string, string | number> })
         .eq("id", report.id);
 
       navigate({ to: "/attendance/verify/$id", params: { id: report.id } });

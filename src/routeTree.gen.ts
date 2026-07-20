@@ -9,38 +9,189 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticated/classes'
+import { Route as AuthenticatedStudentsIndexRouteImport } from './routes/_authenticated/students.index'
+import { Route as AuthenticatedStudentsIdRouteImport } from './routes/_authenticated/students.$id'
+import { Route as AuthenticatedAttendanceUploadRouteImport } from './routes/_authenticated/attendance.upload'
+import { Route as AuthenticatedAttendanceReportsRouteImport } from './routes/_authenticated/attendance.reports'
+import { Route as AuthenticatedAttendanceVerifyIdRouteImport } from './routes/_authenticated/attendance.verify.$id'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClassesRoute = AuthenticatedClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStudentsIndexRoute =
+  AuthenticatedStudentsIndexRouteImport.update({
+    id: '/students/',
+    path: '/students/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStudentsIdRoute = AuthenticatedStudentsIdRouteImport.update({
+  id: '/students/$id',
+  path: '/students/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAttendanceUploadRoute =
+  AuthenticatedAttendanceUploadRouteImport.update({
+    id: '/attendance/upload',
+    path: '/attendance/upload',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAttendanceReportsRoute =
+  AuthenticatedAttendanceReportsRouteImport.update({
+    id: '/attendance/reports',
+    path: '/attendance/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAttendanceVerifyIdRoute =
+  AuthenticatedAttendanceVerifyIdRouteImport.update({
+    id: '/attendance/verify/$id',
+    path: '/attendance/verify/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/classes': typeof AuthenticatedClassesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
+  '/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
+  '/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/students/': typeof AuthenticatedStudentsIndexRoute
+  '/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/classes': typeof AuthenticatedClassesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
+  '/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
+  '/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/students': typeof AuthenticatedStudentsIndexRoute
+  '/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/classes': typeof AuthenticatedClassesRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
+  '/_authenticated/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
+  '/_authenticated/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/_authenticated/students/': typeof AuthenticatedStudentsIndexRoute
+  '/_authenticated/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/classes'
+    | '/dashboard'
+    | '/onboarding'
+    | '/settings'
+    | '/attendance/reports'
+    | '/attendance/upload'
+    | '/students/$id'
+    | '/students/'
+    | '/attendance/verify/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/classes'
+    | '/dashboard'
+    | '/onboarding'
+    | '/settings'
+    | '/attendance/reports'
+    | '/attendance/upload'
+    | '/students/$id'
+    | '/students'
+    | '/attendance/verify/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/classes'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/onboarding'
+    | '/_authenticated/settings'
+    | '/_authenticated/attendance/reports'
+    | '/_authenticated/attendance/upload'
+    | '/_authenticated/students/$id'
+    | '/_authenticated/students/'
+    | '/_authenticated/attendance/verify/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +199,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/classes': {
+      id: '/_authenticated/classes'
+      path: '/classes'
+      fullPath: '/classes'
+      preLoaderRoute: typeof AuthenticatedClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/students/': {
+      id: '/_authenticated/students/'
+      path: '/students'
+      fullPath: '/students/'
+      preLoaderRoute: typeof AuthenticatedStudentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/students/$id': {
+      id: '/_authenticated/students/$id'
+      path: '/students/$id'
+      fullPath: '/students/$id'
+      preLoaderRoute: typeof AuthenticatedStudentsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attendance/upload': {
+      id: '/_authenticated/attendance/upload'
+      path: '/attendance/upload'
+      fullPath: '/attendance/upload'
+      preLoaderRoute: typeof AuthenticatedAttendanceUploadRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attendance/reports': {
+      id: '/_authenticated/attendance/reports'
+      path: '/attendance/reports'
+      fullPath: '/attendance/reports'
+      preLoaderRoute: typeof AuthenticatedAttendanceReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attendance/verify/$id': {
+      id: '/_authenticated/attendance/verify/$id'
+      path: '/attendance/verify/$id'
+      fullPath: '/attendance/verify/$id'
+      preLoaderRoute: typeof AuthenticatedAttendanceVerifyIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedClassesRoute: typeof AuthenticatedClassesRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedAttendanceReportsRoute: typeof AuthenticatedAttendanceReportsRoute
+  AuthenticatedAttendanceUploadRoute: typeof AuthenticatedAttendanceUploadRoute
+  AuthenticatedStudentsIdRoute: typeof AuthenticatedStudentsIdRoute
+  AuthenticatedStudentsIndexRoute: typeof AuthenticatedStudentsIndexRoute
+  AuthenticatedAttendanceVerifyIdRoute: typeof AuthenticatedAttendanceVerifyIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedClassesRoute: AuthenticatedClassesRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedAttendanceReportsRoute: AuthenticatedAttendanceReportsRoute,
+  AuthenticatedAttendanceUploadRoute: AuthenticatedAttendanceUploadRoute,
+  AuthenticatedStudentsIdRoute: AuthenticatedStudentsIdRoute,
+  AuthenticatedStudentsIndexRoute: AuthenticatedStudentsIndexRoute,
+  AuthenticatedAttendanceVerifyIdRoute: AuthenticatedAttendanceVerifyIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
