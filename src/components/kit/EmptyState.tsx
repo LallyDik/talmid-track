@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import { isValidElement, type ComponentType, type ReactNode } from "react";
 import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,8 @@ function renderIcon(icon: IconLike | undefined) {
   if (icon === undefined) {
     return <Inbox className="h-7 w-7" />;
   }
-  if (typeof icon === "function") {
+  if (isValidElement(icon)) return icon;
+  if (typeof icon === "function" || (typeof icon === "object" && icon !== null)) {
     const Icon = icon as ComponentType<{ className?: string }>;
     return <Icon className="h-7 w-7" />;
   }
