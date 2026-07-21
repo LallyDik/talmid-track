@@ -14,14 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          rule_key: string
+          severity: Database["public"]["Enums"]["event_severity"]
+          threshold: number | null
+          window_days: number | null
+          yeshiva_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          rule_key: string
+          severity?: Database["public"]["Enums"]["event_severity"]
+          threshold?: number | null
+          window_days?: number | null
+          yeshiva_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          rule_key?: string
+          severity?: Database["public"]["Enums"]["event_severity"]
+          threshold?: number | null
+          window_days?: number | null
+          yeshiva_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_rules_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: false
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alerts: {
+        Row: {
+          body: string | null
+          id: string
+          report_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_key: string
+          severity: Database["public"]["Enums"]["event_severity"]
+          status: string
+          student_id: string | null
+          task_id: string | null
+          title: string
+          treatment_id: string | null
+          triggered_at: string
+          yeshiva_id: string
+        }
+        Insert: {
+          body?: string | null
+          id?: string
+          report_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_key: string
+          severity?: Database["public"]["Enums"]["event_severity"]
+          status?: string
+          student_id?: string | null
+          task_id?: string | null
+          title: string
+          treatment_id?: string | null
+          triggered_at?: string
+          yeshiva_id: string
+        }
+        Update: {
+          body?: string | null
+          id?: string
+          report_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_key?: string
+          severity?: Database["public"]["Enums"]["event_severity"]
+          status?: string
+          student_id?: string | null
+          task_id?: string | null
+          title?: string
+          treatment_id?: string | null
+          triggered_at?: string
+          yeshiva_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "student_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: false
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_settings: {
+        Row: {
+          active_school_year: string | null
+          created_at: string
+          event_types: string[]
+          id: string
+          treatment_types: string[]
+          updated_at: string
+          yeshiva_id: string
+        }
+        Insert: {
+          active_school_year?: string | null
+          created_at?: string
+          event_types?: string[]
+          id?: string
+          treatment_types?: string[]
+          updated_at?: string
+          yeshiva_id: string
+        }
+        Update: {
+          active_school_year?: string | null
+          created_at?: string
+          event_types?: string[]
+          id?: string
+          treatment_types?: string[]
+          updated_at?: string
+          yeshiva_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: true
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           attendance_report_id: string | null
           attendance_status: Database["public"]["Enums"]["attendance_status"]
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           detected_automatically: boolean
           detection_confidence: number | null
           id: string
+          is_draft: boolean
           manually_verified: boolean
           notes: string | null
           report_date: string
@@ -35,9 +204,12 @@ export type Database = {
           attendance_report_id?: string | null
           attendance_status?: Database["public"]["Enums"]["attendance_status"]
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           detected_automatically?: boolean
           detection_confidence?: number | null
           id?: string
+          is_draft?: boolean
           manually_verified?: boolean
           notes?: string | null
           report_date: string
@@ -51,9 +223,12 @@ export type Database = {
           attendance_report_id?: string | null
           attendance_status?: Database["public"]["Enums"]["attendance_status"]
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           detected_automatically?: boolean
           detection_confidence?: number | null
           id?: string
+          is_draft?: boolean
           manually_verified?: boolean
           notes?: string | null
           report_date?: string
@@ -161,6 +336,50 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string
+          yeshiva_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name: string
+          yeshiva_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string
+          yeshiva_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: false
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           active: boolean
@@ -221,6 +440,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: false
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_documents: {
+        Row: {
+          created_at: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          original_file_name: string | null
+          size_bytes: number | null
+          student_id: string
+          title: string | null
+          uploaded_by: string | null
+          yeshiva_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          original_file_name?: string | null
+          size_bytes?: number | null
+          student_id: string
+          title?: string | null
+          uploaded_by?: string | null
+          yeshiva_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          original_file_name?: string | null
+          size_bytes?: number | null
+          student_id?: string
+          title?: string | null
+          uploaded_by?: string | null
+          yeshiva_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_documents_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_documents_yeshiva_id_fkey"
             columns: ["yeshiva_id"]
             isOneToOne: false
             referencedRelation: "yeshivas"
