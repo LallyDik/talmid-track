@@ -1,13 +1,10 @@
 -- ============================================================
--- ניהול הישיבה — סכמה מלאה ל-Supabase (כל המיגרציות מאוחדות)
--- הדבק את כל הקובץ ב-SQL Editor של פרויקט ה-Supabase החדש שלך והרץ.
--- נוצר אוטומטית מ-supabase/migrations/ בסדר הכרונולוגי.
+-- ניהול הישיבה — סכמה מלאה ל-Supabase עצמאי (ללא נתוני דוגמה)
+-- הדבק ב-SQL Editor של הפרויקט שלך והרץ. אידמפוטנטי — בטוח להרצה חוזרת.
 -- ============================================================
 
 
--- ============================================================
--- מקור: 20260720141025_e726bbf5-92ab-4f9d-bfc7-649c386f6f7a.sql
--- ============================================================
+-- ===== 20260720141025_e726bbf5-92ab-4f9d-bfc7-649c386f6f7a.sql =====
 
 -- ============ ENUMS ============
 CREATE TYPE public.app_role AS ENUM ('admin', 'staff', 'viewer');
@@ -92,20 +89,27 @@ AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============ RLS: yeshivas / profiles / user_roles ============
+DROP POLICY IF EXISTS "Users can view their yeshiva" ON public.yeshivas;
 CREATE POLICY "Users can view their yeshiva" ON public.yeshivas FOR SELECT
   TO authenticated USING (id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "Admins manage yeshivas" ON public.yeshivas;
 CREATE POLICY "Admins manage yeshivas" ON public.yeshivas FOR ALL
   TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Users create their yeshiva when none" ON public.yeshivas;
 CREATE POLICY "Users create their yeshiva when none" ON public.yeshivas FOR INSERT
   TO authenticated WITH CHECK (public.get_my_yeshiva_id() IS NULL);
 
+DROP POLICY IF EXISTS "Users read own profile" ON public.profiles;
 CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT
   TO authenticated USING (id = auth.uid() OR public.is_admin());
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE
   TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+DROP POLICY IF EXISTS "Admins insert profiles" ON public.profiles;
 CREATE POLICY "Admins insert profiles" ON public.profiles FOR INSERT
   TO authenticated WITH CHECK (id = auth.uid() OR public.is_admin());
 
+DROP POLICY IF EXISTS "Users read own roles" ON public.user_roles;
 CREATE POLICY "Users read own roles" ON public.user_roles FOR SELECT
   TO authenticated USING (user_id = auth.uid() OR public.is_admin());
 
@@ -121,8 +125,10 @@ CREATE TABLE public.classes (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.classes TO authenticated;
 GRANT ALL ON public.classes TO service_role;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read classes" ON public.classes;
 CREATE POLICY "yeshiva members read classes" ON public.classes FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage classes" ON public.classes;
 CREATE POLICY "yeshiva members manage classes" ON public.classes FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -145,16 +151,19 @@ CREATE TABLE public.students (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_students_yeshiva ON public.students(yeshiva_id);
-CREATE INDEX idx_students_class ON public.students(class_id);
+CREATE INDEX IF NOT EXISTS idx_students_yeshiva ON public.students(yeshiva_id);
+CREATE INDEX IF NOT EXISTS idx_students_class ON public.students(class_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.students TO authenticated;
 GRANT ALL ON public.students TO service_role;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read students" ON public.students;
 CREATE POLICY "yeshiva members read students" ON public.students FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage students" ON public.students;
 CREATE POLICY "yeshiva members manage students" ON public.students FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
+DROP TRIGGER IF EXISTS trg_students_updated ON public.students;
 CREATE TRIGGER trg_students_updated BEFORE UPDATE ON public.students
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -173,8 +182,10 @@ CREATE TABLE public.study_sessions (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.study_sessions TO authenticated;
 GRANT ALL ON public.study_sessions TO service_role;
 ALTER TABLE public.study_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read sessions" ON public.study_sessions;
 CREATE POLICY "yeshiva members read sessions" ON public.study_sessions FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage sessions" ON public.study_sessions;
 CREATE POLICY "yeshiva members manage sessions" ON public.study_sessions FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -194,12 +205,14 @@ CREATE TABLE public.attendance_reports (
   ocr_raw_result jsonb,
   notes text
 );
-CREATE INDEX idx_reports_date ON public.attendance_reports(report_date);
+CREATE INDEX IF NOT EXISTS idx_reports_date ON public.attendance_reports(report_date);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendance_reports TO authenticated;
 GRANT ALL ON public.attendance_reports TO service_role;
 ALTER TABLE public.attendance_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read reports" ON public.attendance_reports;
 CREATE POLICY "yeshiva members read reports" ON public.attendance_reports FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage reports" ON public.attendance_reports;
 CREATE POLICY "yeshiva members manage reports" ON public.attendance_reports FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -222,16 +235,19 @@ CREATE TABLE public.attendance_records (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (student_id, report_date, study_session_id)
 );
-CREATE INDEX idx_records_student ON public.attendance_records(student_id);
-CREATE INDEX idx_records_date ON public.attendance_records(report_date);
+CREATE INDEX IF NOT EXISTS idx_records_student ON public.attendance_records(student_id);
+CREATE INDEX IF NOT EXISTS idx_records_date ON public.attendance_records(report_date);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendance_records TO authenticated;
 GRANT ALL ON public.attendance_records TO service_role;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 CREATE POLICY "yeshiva members read records" ON public.attendance_records FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage records" ON public.attendance_records;
 CREATE POLICY "yeshiva members manage records" ON public.attendance_records FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
+DROP TRIGGER IF EXISTS trg_records_updated ON public.attendance_records;
 CREATE TRIGGER trg_records_updated BEFORE UPDATE ON public.attendance_records
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -251,8 +267,10 @@ CREATE TABLE public.student_events (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_events TO authenticated;
 GRANT ALL ON public.student_events TO service_role;
 ALTER TABLE public.student_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read events" ON public.student_events;
 CREATE POLICY "yeshiva members read events" ON public.student_events FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage events" ON public.student_events;
 CREATE POLICY "yeshiva members manage events" ON public.student_events FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -277,8 +295,10 @@ CREATE TABLE public.student_treatments (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_treatments TO authenticated;
 GRANT ALL ON public.student_treatments TO service_role;
 ALTER TABLE public.student_treatments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read treatments" ON public.student_treatments;
 CREATE POLICY "yeshiva members read treatments" ON public.student_treatments FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage treatments" ON public.student_treatments;
 CREATE POLICY "yeshiva members manage treatments" ON public.student_treatments FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -295,11 +315,13 @@ CREATE TABLE public.treatment_updates (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.treatment_updates TO authenticated;
 GRANT ALL ON public.treatment_updates TO service_role;
 ALTER TABLE public.treatment_updates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read treatment updates" ON public.treatment_updates;
 CREATE POLICY "yeshiva members read treatment updates" ON public.treatment_updates FOR SELECT
   TO authenticated USING (EXISTS (
     SELECT 1 FROM public.student_treatments t
     WHERE t.id = treatment_id AND (t.yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin())
   ));
+DROP POLICY IF EXISTS "yeshiva members manage treatment updates" ON public.treatment_updates;
 CREATE POLICY "yeshiva members manage treatment updates" ON public.treatment_updates FOR ALL
   TO authenticated USING (EXISTS (
     SELECT 1 FROM public.student_treatments t
@@ -327,16 +349,16 @@ CREATE TABLE public.tasks (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tasks TO authenticated;
 GRANT ALL ON public.tasks TO service_role;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "yeshiva members read tasks" ON public.tasks;
 CREATE POLICY "yeshiva members read tasks" ON public.tasks FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin());
+DROP POLICY IF EXISTS "yeshiva members manage tasks" ON public.tasks;
 CREATE POLICY "yeshiva members manage tasks" ON public.tasks FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 
 
--- ============================================================
--- מקור: 20260720141041_45846a22-6e78-4da6-86b3-fb807cf68e90.sql
--- ============================================================
+-- ===== 20260720141041_45846a22-6e78-4da6-86b3-fb807cf68e90.sql =====
 
 REVOKE ALL ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
@@ -348,9 +370,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_yeshiva_id() TO authenticated;
 
 
--- ============================================================
--- מקור: 20260720141055_93cecd50-dd57-4e9d-843d-ee825ea2ef2d.sql
--- ============================================================
+-- ===== 20260720141055_93cecd50-dd57-4e9d-843d-ee825ea2ef2d.sql =====
 
 CREATE POLICY "authenticated read attendance reports"
   ON storage.objects FOR SELECT TO authenticated
@@ -366,9 +386,7 @@ CREATE POLICY "authenticated delete attendance reports"
   USING (bucket_id = 'attendance-reports');
 
 
--- ============================================================
--- מקור: 20260721074414_bc91bcdc-895c-4946-9264-89696c97d05e.sql
--- ============================================================
+-- ===== 20260721074414_bc91bcdc-895c-4946-9264-89696c97d05e.sql =====
 
 -- 1) Storage policies: scope by yeshiva folder (first path segment = yeshiva_id)
 DROP POLICY IF EXISTS "authenticated read attendance reports" ON storage.objects;
@@ -458,9 +476,7 @@ REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated
 REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM PUBLIC, anon, authenticated;
 
 
--- ============================================================
--- מקור: 20260721074439_b8740082-06cd-4661-9018-7832af935084.sql
--- ============================================================
+-- ===== 20260721074439_b8740082-06cd-4661-9018-7832af935084.sql =====
 
 -- Switch policy-helper functions from SECURITY DEFINER to SECURITY INVOKER.
 -- Authenticated users can already read their own profile row and their own user_roles rows via RLS,
@@ -490,15 +506,17 @@ SET search_path = public
 AS $$ SELECT yeshiva_id FROM public.profiles WHERE id = auth.uid() $$;
 
 
--- ============================================================
--- מקור: 20260721084000_7eef4c55-3adf-4b8d-a871-3d14b2c888ac.sql
--- ============================================================
+-- ===== 20260721084000_7eef4c55-3adf-4b8d-a871-3d14b2c888ac.sql =====
+DROP POLICY IF EXISTS "authenticated read student documents" ON storage.objects;
 DROP POLICY IF EXISTS "authenticated read student documents" ON storage.objects;
 CREATE POLICY "authenticated read student documents" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'student-documents');
 DROP POLICY IF EXISTS "authenticated upload student documents" ON storage.objects;
+DROP POLICY IF EXISTS "authenticated upload student documents" ON storage.objects;
 CREATE POLICY "authenticated upload student documents" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'student-documents');
 DROP POLICY IF EXISTS "authenticated update student documents" ON storage.objects;
+DROP POLICY IF EXISTS "authenticated update student documents" ON storage.objects;
 CREATE POLICY "authenticated update student documents" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'student-documents');
+DROP POLICY IF EXISTS "authenticated delete student documents" ON storage.objects;
 DROP POLICY IF EXISTS "authenticated delete student documents" ON storage.objects;
 CREATE POLICY "authenticated delete student documents" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'student-documents');
 
@@ -525,7 +543,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.yeshiva_invites TO authenticated;
 GRANT ALL ON public.yeshiva_invites TO service_role;
 ALTER TABLE public.yeshiva_invites ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "admins manage invites" ON public.yeshiva_invites;
+DROP POLICY IF EXISTS "admins manage invites" ON public.yeshiva_invites;
 CREATE POLICY "admins manage invites" ON public.yeshiva_invites FOR ALL TO authenticated USING (public.is_admin_of(yeshiva_id)) WITH CHECK (public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "invitee reads own invite" ON public.yeshiva_invites;
 DROP POLICY IF EXISTS "invitee reads own invite" ON public.yeshiva_invites;
 CREATE POLICY "invitee reads own invite" ON public.yeshiva_invites FOR SELECT TO authenticated USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
 
@@ -540,9 +560,7 @@ END; $$;
 REVOKE ALL ON FUNCTION public.claim_yeshiva(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.claim_yeshiva(uuid) TO authenticated;
 
--- ============================================================
--- מקור: 20260721084058_56dfb926-1bc2-4d3b-88c7-b2a0a7713dbf.sql
--- ============================================================
+-- ===== 20260721084058_56dfb926-1bc2-4d3b-88c7-b2a0a7713dbf.sql =====
 ALTER TABLE public.attendance_records
   ADD COLUMN IF NOT EXISTS is_draft boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS deleted_at timestamptz,
@@ -551,8 +569,11 @@ CREATE INDEX IF NOT EXISTS idx_records_yeshiva_date_draft ON public.attendance_r
 
 DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 DROP POLICY IF EXISTS "yeshiva members manage records" ON public.attendance_records;
+DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 CREATE POLICY "yeshiva members read records" ON public.attendance_records FOR SELECT TO authenticated USING ((yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id)) AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "yeshiva members insert records" ON public.attendance_records;
 CREATE POLICY "yeshiva members insert records" ON public.attendance_records FOR INSERT TO authenticated WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
+DROP POLICY IF EXISTS "yeshiva members update records" ON public.attendance_records;
 CREATE POLICY "yeshiva members update records" ON public.attendance_records FOR UPDATE TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id()) WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 REVOKE DELETE ON public.attendance_records FROM authenticated;
 
@@ -569,6 +590,7 @@ GRANT SELECT ON public.audit_log TO authenticated;
 GRANT ALL ON public.audit_log TO service_role;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "admins read audit log" ON public.audit_log;
+DROP POLICY IF EXISTS "admins read audit log" ON public.audit_log;
 CREATE POLICY "admins read audit log" ON public.audit_log FOR SELECT TO authenticated USING (yeshiva_id IS NOT NULL AND public.is_admin_of(yeshiva_id));
 
 CREATE TABLE IF NOT EXISTS public.student_documents (
@@ -584,7 +606,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_documents TO authenticate
 GRANT ALL ON public.student_documents TO service_role;
 ALTER TABLE public.student_documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read documents" ON public.student_documents;
+DROP POLICY IF EXISTS "yeshiva members read documents" ON public.student_documents;
 CREATE POLICY "yeshiva members read documents" ON public.student_documents FOR SELECT TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage documents" ON public.student_documents;
 DROP POLICY IF EXISTS "yeshiva members manage documents" ON public.student_documents;
 CREATE POLICY "yeshiva members manage documents" ON public.student_documents FOR ALL TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id()) WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 
@@ -601,7 +625,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.alert_rules TO authenticated;
 GRANT ALL ON public.alert_rules TO service_role;
 ALTER TABLE public.alert_rules ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read alert rules" ON public.alert_rules;
+DROP POLICY IF EXISTS "yeshiva members read alert rules" ON public.alert_rules;
 CREATE POLICY "yeshiva members read alert rules" ON public.alert_rules FOR SELECT TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage alert rules" ON public.alert_rules;
 DROP POLICY IF EXISTS "yeshiva members manage alert rules" ON public.alert_rules;
 CREATE POLICY "yeshiva members manage alert rules" ON public.alert_rules FOR ALL TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id()) WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 
@@ -625,7 +651,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.alerts TO authenticated;
 GRANT ALL ON public.alerts TO service_role;
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read alerts" ON public.alerts;
+DROP POLICY IF EXISTS "yeshiva members read alerts" ON public.alerts;
 CREATE POLICY "yeshiva members read alerts" ON public.alerts FOR SELECT TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage alerts" ON public.alerts;
 DROP POLICY IF EXISTS "yeshiva members manage alerts" ON public.alerts;
 CREATE POLICY "yeshiva members manage alerts" ON public.alerts FOR ALL TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id()) WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 
@@ -642,13 +670,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.app_settings TO authenticated;
 GRANT ALL ON public.app_settings TO service_role;
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read settings" ON public.app_settings;
+DROP POLICY IF EXISTS "yeshiva members read settings" ON public.app_settings;
 CREATE POLICY "yeshiva members read settings" ON public.app_settings FOR SELECT TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage settings" ON public.app_settings;
 DROP POLICY IF EXISTS "yeshiva members manage settings" ON public.app_settings;
 CREATE POLICY "yeshiva members manage settings" ON public.app_settings FOR ALL TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id()) WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
 
--- ============================================================
--- מקור: 20260721093925_8a77f27e-4d3b-4d14-94d0-fcc4dea0e917.sql
--- ============================================================
+-- ===== 20260721093925_8a77f27e-4d3b-4d14-94d0-fcc4dea0e917.sql =====
 
 -- Scope student-documents bucket by yeshiva folder
 DROP POLICY IF EXISTS "authenticated read student documents" ON storage.objects;
@@ -656,6 +684,7 @@ DROP POLICY IF EXISTS "authenticated upload student documents" ON storage.object
 DROP POLICY IF EXISTS "authenticated update student documents" ON storage.objects;
 DROP POLICY IF EXISTS "authenticated delete student documents" ON storage.objects;
 
+DROP POLICY IF EXISTS "student documents read own yeshiva" ON storage.objects;
 CREATE POLICY "student documents read own yeshiva" ON storage.objects
   FOR SELECT TO authenticated
   USING (bucket_id = 'student-documents' AND (
@@ -663,6 +692,7 @@ CREATE POLICY "student documents read own yeshiva" ON storage.objects
     OR public.is_admin()
   ));
 
+DROP POLICY IF EXISTS "student documents insert own yeshiva" ON storage.objects;
 CREATE POLICY "student documents insert own yeshiva" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'student-documents' AND (
@@ -670,6 +700,7 @@ CREATE POLICY "student documents insert own yeshiva" ON storage.objects
     OR public.is_admin()
   ));
 
+DROP POLICY IF EXISTS "student documents update own yeshiva" ON storage.objects;
 CREATE POLICY "student documents update own yeshiva" ON storage.objects
   FOR UPDATE TO authenticated
   USING (bucket_id = 'student-documents' AND (
@@ -677,6 +708,7 @@ CREATE POLICY "student documents update own yeshiva" ON storage.objects
     OR public.is_admin()
   ));
 
+DROP POLICY IF EXISTS "student documents delete own yeshiva" ON storage.objects;
 CREATE POLICY "student documents delete own yeshiva" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'student-documents' AND (
@@ -699,9 +731,7 @@ AS $$
 $$;
 
 
--- ============================================================
--- מקור: 20260721120000_tenant_security_and_storage.sql
--- ============================================================
+-- ===== 20260721120000_tenant_security_and_storage.sql =====
 -- ============================================================================
 -- TENANT SECURITY, STORAGE BUCKETS, INVITES
 -- Fixes: (1) missing storage buckets, (2) cross-tenant admin data leak,
@@ -758,61 +788,74 @@ GRANT EXECUTE ON FUNCTION public.is_admin_of(uuid) TO authenticated;
 
 -- ---- yeshivas ----
 DROP POLICY IF EXISTS "Users can view their yeshiva" ON public.yeshivas;
+DROP POLICY IF EXISTS "Users can view their yeshiva" ON public.yeshivas;
 CREATE POLICY "Users can view their yeshiva" ON public.yeshivas FOR SELECT
   TO authenticated USING (id = public.get_my_yeshiva_id() OR public.is_admin_of(id));
+DROP POLICY IF EXISTS "Admins manage yeshivas" ON public.yeshivas;
 DROP POLICY IF EXISTS "Admins manage yeshivas" ON public.yeshivas;
 CREATE POLICY "Admins manage yeshivas" ON public.yeshivas FOR ALL
   TO authenticated USING (public.is_admin_of(id)) WITH CHECK (public.is_admin_of(id));
 
 -- ---- profiles ----
 DROP POLICY IF EXISTS "Users read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users read own profile" ON public.profiles;
 CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT
   TO authenticated USING (id = auth.uid() OR (yeshiva_id IS NOT NULL AND public.is_admin_of(yeshiva_id)));
+DROP POLICY IF EXISTS "Admins insert profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins insert profiles" ON public.profiles;
 CREATE POLICY "Admins insert profiles" ON public.profiles FOR INSERT
   TO authenticated WITH CHECK (id = auth.uid() OR (yeshiva_id IS NOT NULL AND public.is_admin_of(yeshiva_id)));
 
 -- ---- user_roles ----
 DROP POLICY IF EXISTS "Users read own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Users read own roles" ON public.user_roles;
 CREATE POLICY "Users read own roles" ON public.user_roles FOR SELECT
   TO authenticated USING (user_id = auth.uid() OR (yeshiva_id IS NOT NULL AND public.is_admin_of(yeshiva_id)));
 
 -- ---- classes ----
+DROP POLICY IF EXISTS "yeshiva members read classes" ON public.classes;
 DROP POLICY IF EXISTS "yeshiva members read classes" ON public.classes;
 CREATE POLICY "yeshiva members read classes" ON public.classes FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- students ----
 DROP POLICY IF EXISTS "yeshiva members read students" ON public.students;
+DROP POLICY IF EXISTS "yeshiva members read students" ON public.students;
 CREATE POLICY "yeshiva members read students" ON public.students FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- study_sessions ----
+DROP POLICY IF EXISTS "yeshiva members read sessions" ON public.study_sessions;
 DROP POLICY IF EXISTS "yeshiva members read sessions" ON public.study_sessions;
 CREATE POLICY "yeshiva members read sessions" ON public.study_sessions FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- attendance_reports ----
 DROP POLICY IF EXISTS "yeshiva members read reports" ON public.attendance_reports;
+DROP POLICY IF EXISTS "yeshiva members read reports" ON public.attendance_reports;
 CREATE POLICY "yeshiva members read reports" ON public.attendance_reports FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- attendance_records ----
+DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 CREATE POLICY "yeshiva members read records" ON public.attendance_records FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- student_events ----
 DROP POLICY IF EXISTS "yeshiva members read events" ON public.student_events;
+DROP POLICY IF EXISTS "yeshiva members read events" ON public.student_events;
 CREATE POLICY "yeshiva members read events" ON public.student_events FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- student_treatments ----
 DROP POLICY IF EXISTS "yeshiva members read treatments" ON public.student_treatments;
+DROP POLICY IF EXISTS "yeshiva members read treatments" ON public.student_treatments;
 CREATE POLICY "yeshiva members read treatments" ON public.student_treatments FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
 
 -- ---- treatment_updates ----
+DROP POLICY IF EXISTS "yeshiva members read treatment updates" ON public.treatment_updates;
 DROP POLICY IF EXISTS "yeshiva members read treatment updates" ON public.treatment_updates;
 CREATE POLICY "yeshiva members read treatment updates" ON public.treatment_updates FOR SELECT
   TO authenticated USING (EXISTS (
@@ -822,6 +865,7 @@ CREATE POLICY "yeshiva members read treatment updates" ON public.treatment_updat
   ));
 
 -- ---- tasks ----
+DROP POLICY IF EXISTS "yeshiva members read tasks" ON public.tasks;
 DROP POLICY IF EXISTS "yeshiva members read tasks" ON public.tasks;
 CREATE POLICY "yeshiva members read tasks" ON public.tasks FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
@@ -846,10 +890,12 @@ ALTER TABLE public.yeshiva_invites ENABLE ROW LEVEL SECURITY;
 
 -- Admins of the yeshiva manage its invites.
 DROP POLICY IF EXISTS "admins manage invites" ON public.yeshiva_invites;
+DROP POLICY IF EXISTS "admins manage invites" ON public.yeshiva_invites;
 CREATE POLICY "admins manage invites" ON public.yeshiva_invites FOR ALL
   TO authenticated USING (public.is_admin_of(yeshiva_id))
   WITH CHECK (public.is_admin_of(yeshiva_id));
 -- The invited user can read their own pending invite by matching email.
+DROP POLICY IF EXISTS "invitee reads own invite" ON public.yeshiva_invites;
 DROP POLICY IF EXISTS "invitee reads own invite" ON public.yeshiva_invites;
 CREATE POLICY "invitee reads own invite" ON public.yeshiva_invites FOR SELECT
   TO authenticated USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
@@ -917,9 +963,7 @@ REVOKE ALL ON FUNCTION public.claim_yeshiva(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.claim_yeshiva(uuid) TO authenticated;
 
 
--- ============================================================
--- מקור: 20260721120100_new_tables_audit_softdelete.sql
--- ============================================================
+-- ===== 20260721120100_new_tables_audit_softdelete.sql =====
 -- ============================================================================
 -- NEW TABLES + AUDIT LOG + SOFT DELETE + DRAFT/FINAL ATTENDANCE
 -- Fixes 4-9.
@@ -940,12 +984,15 @@ CREATE INDEX IF NOT EXISTS idx_records_yeshiva_date_draft
 -- deleted (set deleted_at) via UPDATE.
 DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 DROP POLICY IF EXISTS "yeshiva members manage records" ON public.attendance_records;
+DROP POLICY IF EXISTS "yeshiva members read records" ON public.attendance_records;
 CREATE POLICY "yeshiva members read records" ON public.attendance_records FOR SELECT
   TO authenticated
   USING ((yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id))
          AND deleted_at IS NULL);
+DROP POLICY IF EXISTS "yeshiva members insert records" ON public.attendance_records;
 CREATE POLICY "yeshiva members insert records" ON public.attendance_records FOR INSERT
   TO authenticated WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
+DROP POLICY IF EXISTS "yeshiva members update records" ON public.attendance_records;
 CREATE POLICY "yeshiva members update records" ON public.attendance_records FOR UPDATE
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
   WITH CHECK (yeshiva_id = public.get_my_yeshiva_id());
@@ -1015,6 +1062,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON public.audit_log(created_at DESC
 GRANT SELECT ON public.audit_log TO authenticated;
 GRANT ALL ON public.audit_log TO service_role;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admins read audit log" ON public.audit_log;
 DROP POLICY IF EXISTS "admins read audit log" ON public.audit_log;
 CREATE POLICY "admins read audit log" ON public.audit_log FOR SELECT
   TO authenticated USING (yeshiva_id IS NOT NULL AND public.is_admin_of(yeshiva_id));
@@ -1086,8 +1134,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_documents TO authenticate
 GRANT ALL ON public.student_documents TO service_role;
 ALTER TABLE public.student_documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read documents" ON public.student_documents;
+DROP POLICY IF EXISTS "yeshiva members read documents" ON public.student_documents;
 CREATE POLICY "yeshiva members read documents" ON public.student_documents FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage documents" ON public.student_documents;
 DROP POLICY IF EXISTS "yeshiva members manage documents" ON public.student_documents;
 CREATE POLICY "yeshiva members manage documents" ON public.student_documents FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
@@ -1110,8 +1160,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.alert_rules TO authenticated;
 GRANT ALL ON public.alert_rules TO service_role;
 ALTER TABLE public.alert_rules ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read alert rules" ON public.alert_rules;
+DROP POLICY IF EXISTS "yeshiva members read alert rules" ON public.alert_rules;
 CREATE POLICY "yeshiva members read alert rules" ON public.alert_rules FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage alert rules" ON public.alert_rules;
 DROP POLICY IF EXISTS "yeshiva members manage alert rules" ON public.alert_rules;
 CREATE POLICY "yeshiva members manage alert rules" ON public.alert_rules FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
@@ -1140,8 +1192,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.alerts TO authenticated;
 GRANT ALL ON public.alerts TO service_role;
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read alerts" ON public.alerts;
+DROP POLICY IF EXISTS "yeshiva members read alerts" ON public.alerts;
 CREATE POLICY "yeshiva members read alerts" ON public.alerts FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage alerts" ON public.alerts;
 DROP POLICY IF EXISTS "yeshiva members manage alerts" ON public.alerts;
 CREATE POLICY "yeshiva members manage alerts" ON public.alerts FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
@@ -1161,8 +1215,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.app_settings TO authenticated;
 GRANT ALL ON public.app_settings TO service_role;
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "yeshiva members read settings" ON public.app_settings;
+DROP POLICY IF EXISTS "yeshiva members read settings" ON public.app_settings;
 CREATE POLICY "yeshiva members read settings" ON public.app_settings FOR SELECT
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id() OR public.is_admin_of(yeshiva_id));
+DROP POLICY IF EXISTS "yeshiva members manage settings" ON public.app_settings;
 DROP POLICY IF EXISTS "yeshiva members manage settings" ON public.app_settings;
 CREATE POLICY "yeshiva members manage settings" ON public.app_settings FOR ALL
   TO authenticated USING (yeshiva_id = public.get_my_yeshiva_id())
@@ -1173,171 +1229,7 @@ CREATE TRIGGER trg_app_settings_updated
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
--- ============================================================
--- מקור: 20260721120200_seed_sample_data.sql
--- ============================================================
--- ============================================================================
--- SAMPLE / SEED DATA
--- Guarded: only runs when no yeshiva exists yet, so it never touches real data.
--- ============================================================================
-DO $$
-DECLARE
-  _yid   uuid;
-  _cls_a uuid;  -- שיעור א׳
-  _cls_b uuid;  -- שיעור ב׳
-  _cls_c uuid;  -- שיעור ג׳
-  _cls_k uuid;  -- קיבוץ א׳
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.yeshivas) THEN
-    RAISE NOTICE 'yeshivas already exist - skipping seed';
-    RETURN;
-  END IF;
-
-  -- ---- yeshiva ----
-  INSERT INTO public.yeshivas (name, address)
-  VALUES ('ישיבת דוגמה', 'רחוב הישיבה 1, ירושלים')
-  RETURNING id INTO _yid;
-
-  -- ---- study sessions (3 sedarim) ----
-  INSERT INTO public.study_sessions (yeshiva_id, name, order_index, start_time, late_time_b, late_time_c) VALUES
-    (_yid, 'סדר א׳', 0, '08:00', '08:15', '08:30'),
-    (_yid, 'סדר ב׳', 1, '16:00', '16:15', '16:30'),
-    (_yid, 'סדר ג׳', 2, '20:30', '20:45', '21:00');
-
-  -- ---- classes ----
-  INSERT INTO public.classes (yeshiva_id, name) VALUES (_yid, 'שיעור א׳') RETURNING id INTO _cls_a;
-  INSERT INTO public.classes (yeshiva_id, name) VALUES (_yid, 'שיעור ב׳') RETURNING id INTO _cls_b;
-  INSERT INTO public.classes (yeshiva_id, name) VALUES (_yid, 'שיעור ג׳') RETURNING id INTO _cls_c;
-  INSERT INTO public.classes (yeshiva_id, name) VALUES (_yid, 'קיבוץ א׳') RETURNING id INTO _cls_k;
-
-  -- ---- students (~40, spread across the classes) ----
-  INSERT INTO public.students (yeshiva_id, class_id, full_name, father_name)
-  SELECT _yid, _cls_a, v.full_name, v.father_name FROM (VALUES
-    ('משה כהן', 'ישראל'),
-    ('יעקב לוי', 'אברהם'),
-    ('שמואל פרידמן', 'דוד'),
-    ('אהרן ווייס', 'יוסף'),
-    ('דוד רוזנברג', 'מנחם'),
-    ('יצחק גרינבוים', 'שלמה'),
-    ('חיים שטרן', 'נפתלי'),
-    ('אליהו ברגר', 'מרדכי'),
-    ('נתן הורוביץ', 'אשר'),
-    ('יוסף פינקל', 'יהודה')
-  ) AS v(full_name, father_name);
-
-  INSERT INTO public.students (yeshiva_id, class_id, full_name, father_name)
-  SELECT _yid, _cls_b, v.full_name, v.father_name FROM (VALUES
-    ('מנחם קליין', 'עזריאל'),
-    ('שלמה גולד', 'ברוך'),
-    ('אברהם זילברמן', 'חיים'),
-    ('ברוך ליברמן', 'שמעון'),
-    ('מרדכי אקשטיין', 'יעקב'),
-    ('אשר וינברג', 'משה'),
-    ('נפתלי שוורץ', 'אליעזר'),
-    ('יהודה בלוי', 'שמואל'),
-    ('עזריאל פרלמן', 'נחום'),
-    ('שמעון האן', 'זאב')
-  ) AS v(full_name, father_name);
-
-  INSERT INTO public.students (yeshiva_id, class_id, full_name, father_name)
-  SELECT _yid, _cls_c, v.full_name, v.father_name FROM (VALUES
-    ('אליעזר רוט', 'צבי'),
-    ('צבי מרגליות', 'ישראל'),
-    ('ישראל דויטש', 'מאיר'),
-    ('מאיר לנדאו', 'יונה'),
-    ('יונה ביסטריצקי', 'אהרן'),
-    ('זאב אונגר', 'גדליה'),
-    ('גדליה שפירא', 'יצחק'),
-    ('נחום טאובר', 'דוב'),
-    ('דוב הלר', 'מנשה'),
-    ('מנשה קרליץ', 'אליהו')
-  ) AS v(full_name, father_name);
-
-  INSERT INTO public.students (yeshiva_id, class_id, full_name, father_name)
-  SELECT _yid, _cls_k, v.full_name, v.father_name FROM (VALUES
-    ('שרגא פייביש וובר', 'יהושע'),
-    ('יהושע העשל שטיין', 'קלמן'),
-    ('קלמן רייס', 'שרגא'),
-    ('אלימלך גוטמן', 'פסח'),
-    ('פסח וכטל', 'אלימלך'),
-    ('יואל מוזס', 'שאול'),
-    ('שאול ברודי', 'יואל'),
-    ('רפאל אדלר', 'עמרם'),
-    ('עמרם וייסמן', 'רפאל'),
-    ('יחיאל שנקר', 'ברל')
-  ) AS v(full_name, father_name);
-
-  -- ---- ~3 weeks of finalized attendance (Sun-Thu only) ----
-  -- Distribution: ~70% on_time, 15% late_b, 5% late_c, 8% absent, 2% excused.
-  INSERT INTO public.attendance_records
-    (yeshiva_id, student_id, report_date, study_session_id, attendance_status,
-     is_draft, detected_automatically, manually_verified)
-  SELECT
-    _yid,
-    s.id,
-    (CURRENT_DATE - g.n)::date,
-    ses.id,
-    (CASE
-       WHEN rr.r < 0.70 THEN 'on_time'
-       WHEN rr.r < 0.85 THEN 'late_b'
-       WHEN rr.r < 0.90 THEN 'late_c'
-       WHEN rr.r < 0.98 THEN 'absent'
-       ELSE 'excused'
-     END)::public.attendance_status,
-    false, true, true
-  FROM public.students s
-  CROSS JOIN generate_series(0, 20) AS g(n)
-  CROSS JOIN public.study_sessions ses
-  CROSS JOIN LATERAL (SELECT random() AS r) AS rr
-  WHERE s.yeshiva_id = _yid
-    AND ses.yeshiva_id = _yid
-    AND EXTRACT(ISODOW FROM (CURRENT_DATE - g.n)) NOT IN (5, 6)
-  ON CONFLICT (student_id, report_date, study_session_id) DO NOTHING;
-
-  -- ---- a few student events ----
-  INSERT INTO public.student_events (yeshiva_id, student_id, event_type, event_date, title, description, severity)
-  VALUES
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 2 LIMIT 1),
-      'משמעת', CURRENT_DATE - 3, 'הפרעה בסדר', 'הפריע במהלך סדר ב׳', 'low'),
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 7 LIMIT 1),
-      'לימודים', CURRENT_DATE - 6, 'שיפור ניכר בשיעור', 'התקדמות יפה בחומר', 'info'),
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 15 LIMIT 1),
-      'בריאות', CURRENT_DATE - 4, 'נעדר עקב מחלה', 'הביא אישור רפואי', 'medium'),
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 30 LIMIT 1),
-      'משמעת', CURRENT_DATE - 1, 'איחורים חוזרים', 'איחר שלוש פעמים השבוע', 'high');
-
-  -- ---- a few treatments ----
-  INSERT INTO public.student_treatments (yeshiva_id, student_id, title, description, treatment_type, status)
-  VALUES
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 30 LIMIT 1),
-      'מעקב איחורים', 'מעקב שבועי אחר נוכחות התלמיד', 'מעקב נוכחות', 'in_progress'),
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 2 LIMIT 1),
-      'שיחת משמעת', 'שיחת חיזוק בעקבות הפרעה בסדר', 'שיחת חיזוק', 'new'),
-    (_yid, (SELECT id FROM public.students WHERE yeshiva_id = _yid ORDER BY full_name OFFSET 15 LIMIT 1),
-      'ליווי לאחר היעדרות', 'ליווי אישי לחזרה לשגרת הלימודים', 'ליווי אישי', 'in_progress');
-
-  INSERT INTO public.treatment_updates (treatment_id, content)
-  SELECT id, 'נערכה שיחה עם התלמיד ונקבע מעקב שבועי.'
-  FROM public.student_treatments
-  WHERE yeshiva_id = _yid AND title = 'מעקב איחורים'
-  LIMIT 1;
-
-  -- ---- app settings for the sample yeshiva ----
-  INSERT INTO public.app_settings (yeshiva_id, event_types, treatment_types, active_school_year)
-  VALUES (
-    _yid,
-    ARRAY['משמעת', 'לימודים', 'בריאות', 'משפחה'],
-    ARRAY['מעקב נוכחות', 'שיחת חיזוק', 'ליווי אישי'],
-    'תשפ"ו'
-  )
-  ON CONFLICT (yeshiva_id) DO NOTHING;
-
-END $$;
-
-
--- ============================================================
--- מקור: 20260722100000_review_security_fixes.sql
--- ============================================================
+-- ===== 20260722100000_review_security_fixes.sql =====
 -- ============================================================================
 -- REVIEW SECURITY FIXES
 -- Addresses three independent security findings:
@@ -1365,6 +1257,7 @@ END $$;
 -- DEFINER function claim_yeshiva(), whose owner bypasses RLS. Onboarding now
 -- calls that RPC instead of updating the column directly.
 -- ============================================================================
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE
   TO authenticated
