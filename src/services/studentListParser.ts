@@ -19,7 +19,7 @@ import Papa from "papaparse";
  * ================================================================== */
 
 /** מקור הנתונים שממנו נותחה הרשימה. */
-export type SourceType = "xlsx" | "csv" | "paste";
+export type SourceType = "xlsx" | "csv" | "paste" | "pdf";
 
 /** ששת שדות היעד שאליהם ממפים עמודות. */
 export type TargetField =
@@ -117,10 +117,226 @@ class UnsupportedTextExtractor implements TextExtractor {
 export const documentTextExtractor: TextExtractor = new UnsupportedTextExtractor();
 
 /* ================================================================== *
+ * PDF text-layer extraction (client-only)
+ * ------------------------------------------------------------------
+ * חילוץ שמות מקובץ PDF שיש בו שכבת טקסט (לא סריקה/תמונה). המבנה של
+ * דף רישום-נוכחות ישיבתי: ~4 עמודות בכל עמוד, נקראות מימין לשמאל, כל
+ * עמודה טבלה קטנה "השם א ב". כל תא שאינו כותרת = שם מלא אחד.
+ *
+ * pdfjs-dist מיובא דינמית *בתוך* הפונקציה כדי שלא ירוץ ב-SSR ולא ייכנס
+ * ל-chunk הראשי. ה-worker מוגדר דרך ‎?url‎ (נכס מ-Vite).
+ * ================================================================== */
+
+interface PdfTextItem {
+  /** transform[4] — קואורדינטת ה-x של ראשית הפריט (יחידות המרחב של הדף). */
+  x: number;
+  /** transform[5] — קו הבסיס האנכי (מקור הצירים ב-PDF בפינה השמאלית-תחתונה). */
+  y: number;
+  str: string;
+  width: number;
+  height: number;
+}
+
+/** הודעת שגיאה כאשר ה-PDF הוא תמונה סרוקה ללא שכבת טקסט. */
+const PDF_SCANNED_MESSAGE =
+  `נראה שקובץ ה-PDF הוא תמונה סרוקה ללא שכבת טקסט, ולכן לא ניתן לחלץ ממנו שמות באופן ` +
+  `אוטומטי. כדי לייבא ממנו רשימת בחורים יש להמיר אותו לקובץ Excel ‎(.xlsx)‎ או ‎CSV, ` +
+  `או להעתיק את הרשימה ולהדביק אותה בלשונית "הדבקת טקסט". תמיכה ב-OCR לקבצים סרוקים ` +
+  `עדיין לא נתמכת.`;
+
+function medianOf(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+/**
+ * מזהה את גבולות העמודות (band boundaries) לפי מרווחי-x גדולים. מחזיר את
+ * נקודות-החיתוך (ערכי x) שמפרידות בין העמודות.
+ *
+ * העיקרון: בתוך עמודה, ערכי ה-x של הפריטים על פני שורות רבות מכסים בצפיפות
+ * את רוחב העמודה → מרווחים קטנים. בין עמודות יש רצועת רווח ריקה → מרווח גדול
+ * ובודד. חיתוך-יתר בטוח (עמודה נוספת רק תניב תאי-כותרת/רעש קצרים שיסוננו),
+ * ואילו חיתוך-חסר היה ממזג שני שמות סמוכים — לכן מטים לכיוון זיהוי מפרידים.
+ */
+function detectColumnBoundaries(sortedXs: number[]): number[] {
+  if (sortedXs.length < 2) return [];
+  const gaps: { size: number; cut: number }[] = [];
+  for (let i = 1; i < sortedXs.length; i++) {
+    const size = sortedXs[i] - sortedXs[i - 1];
+    if (size > 0) gaps.push({ size, cut: (sortedXs[i] + sortedXs[i - 1]) / 2 });
+  }
+  if (gaps.length === 0) return [];
+
+  const span = sortedXs[sortedXs.length - 1] - sortedXs[0];
+  const medGap = medianOf(gaps.map((g) => g.size));
+  // מפריד-עמודות אמיתי גדול בהרבה ממרווח בין-מילים, וגם נתח משמעותי מרוחב הדף.
+  const threshold = Math.max(medGap * 4, span * 0.04, 18);
+
+  return gaps
+    .filter((g) => g.size >= threshold)
+    .map((g) => g.cut)
+    .sort((a, b) => a - b);
+}
+
+/** מקבץ פריטים של עמודה אחת לשורות לפי קרבת-y, ומחזיר מחרוזת לכל שורה. */
+function groupBandIntoLines(band: PdfTextItem[], yEps: number): string[] {
+  // מלמעלה למטה: y יורד (מקור הצירים ב-PDF למטה).
+  const sorted = [...band].sort((a, b) => b.y - a.y);
+  const lines: string[] = [];
+  let current: PdfTextItem[] = [];
+  let anchorY = Number.POSITIVE_INFINITY;
+
+  const flush = () => {
+    if (current.length === 0) return;
+    // RTL: הפריט הימני-ביותר ראשון → מיון לפי x יורד ואיחוד.
+    const text = current
+      .sort((a, b) => b.x - a.x)
+      .map((i) => i.str)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text) lines.push(text);
+    current = [];
+  };
+
+  for (const it of sorted) {
+    if (current.length === 0) {
+      anchorY = it.y;
+    } else if (Math.abs(it.y - anchorY) > yEps) {
+      flush();
+      anchorY = it.y;
+    }
+    current.push(it);
+  }
+  flush();
+  return lines;
+}
+
+/** משחזר שורות מעמוד יחיד בלי למזג עמודות סמוכות. */
+function reconstructPageLines(items: PdfTextItem[]): string[] {
+  const sortedXs = items.map((i) => i.x).sort((a, b) => a - b);
+  const boundaries = detectColumnBoundaries(sortedXs);
+  const bandCount = boundaries.length + 1;
+
+  const bandOf = (x: number): number => {
+    let b = 0;
+    for (const cut of boundaries) {
+      if (x >= cut) b++;
+      else break;
+    }
+    return b;
+  };
+
+  const bands: PdfTextItem[][] = Array.from({ length: bandCount }, () => []);
+  for (const it of items) bands[bandOf(it.x)].push(it);
+
+  const yEps = Math.max(medianOf(items.map((i) => i.height)) * 0.6, 3);
+
+  const out: string[] = [];
+  // מעבר על העמודות מימין לשמאל (x גבוה קודם) — סדר נעים ל-RTL (לא חובה).
+  for (let b = bandCount - 1; b >= 0; b--) {
+    if (bands[b].length === 0) continue;
+    out.push(...groupBandIntoLines(bands[b], yEps));
+  }
+  return out;
+}
+
+/**
+ * מחלץ שורות טקסט גולמיות מקובץ PDF בעל שכבת טקסט. רץ *רק* בדפדפן.
+ * זורק שגיאה עברית ברורה כאשר הקובץ נראה כתמונה סרוקה ללא טקסט.
+ */
+export async function extractPdfLines(file: File): Promise<string[]> {
+  if (typeof window === "undefined") {
+    throw new Error("חילוץ טקסט מ-PDF זמין רק בדפדפן.");
+  }
+
+  // ייבוא דינמי — לא רץ ב-SSR ונשאר מחוץ ל-chunk הראשי.
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = (
+    await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
+  ).default;
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjs.getDocument({ data }).promise;
+
+  const lines: string[] = [];
+  let totalChars = 0;
+
+  try {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+
+      const items: PdfTextItem[] = [];
+      for (const it of content.items) {
+        // פריטי TextMarkedContent אינם מכילים str — מדלגים עליהם.
+        if (!("str" in it)) continue;
+        totalChars += it.str.replace(/\s/g, "").length;
+        if (!it.str.trim()) continue;
+        items.push({
+          x: it.transform[4],
+          y: it.transform[5],
+          str: it.str,
+          width: it.width,
+          height: it.height,
+        });
+      }
+
+      if (items.length > 0) lines.push(...reconstructPageLines(items));
+    }
+  } finally {
+    await pdf.cleanup().catch(() => {});
+    await pdf.destroy().catch(() => {});
+  }
+
+  // כמעט ללא טקסט → כנראה סריקה/תמונה. עדיף לומר את האמת מאשר לייבא ריק.
+  if (totalChars < 8) {
+    throw new Error(PDF_SCANNED_MESSAGE);
+  }
+  return lines;
+}
+
+/**
+ * מסנן שורות "boilerplate" שחוזרות בכל עמוד (כותרת/כותרות-עמודה/פרשה/שנה).
+ * מחזיר true אם יש להשמיט את השורה.
+ */
+function isPdfBoilerplateLine(raw: string): boolean {
+  const t = raw.trim();
+  if (t.length < 2) return true; // ריק / תו בודד (כולל "א"/"ב" של הכותרת)
+
+  // כותרות-עמודה מדויקות.
+  if (t === "השם" || t === "א" || t === "ב") return true;
+  if (t.replace(/\s+/g, " ") === "השם א ב") return true;
+
+  // Boilerplate לפי הכלה (case-insensitive; עברית ממילא חסרת רישיות).
+  const lower = t.toLowerCase();
+  if (lower.includes('בס"ד') || lower.includes("בס״ד")) return true;
+  if (lower.includes("רישום נוכחות")) return true;
+  if (lower.includes("פרשת")) return true;
+  if (lower.includes("תשפ")) return true; // שנה, למשל תשפ"ה
+
+  return false;
+}
+
+/** בונה ParsedSheet חד-עמודתי משמות שחולצו מ-PDF (ללא זיהוי-כותרת). */
+function buildPdfSheet(names: string[]): ParsedSheet {
+  return {
+    headers: ["שם מלא"],
+    rows: names.map((n) => [n]),
+    sourceType: "pdf",
+    hasHeader: false,
+    warnings: [
+      `זוהו ${names.length} שמות מתוך ה-PDF — בדוק ותקן בתצוגה המקדימה לפני שמירה.`,
+    ],
+  };
+}
+
+/* ================================================================== *
  * File-type detection
  * ================================================================== */
 
-type Kind = "spreadsheet" | "delimited" | "document" | "unknown";
+type Kind = "spreadsheet" | "delimited" | "pdf" | "document" | "unknown";
 
 function extensionOf(name: string): string {
   const i = name.lastIndexOf(".");
@@ -131,11 +347,11 @@ function classifyFile(file: File): Kind {
   const ext = extensionOf(file.name);
   if (["xlsx", "xls", "xlsm", "xlsb", "ods"].includes(ext)) return "spreadsheet";
   if (["csv", "tsv", "txt"].includes(ext)) return "delimited";
+  if (ext === "pdf") return "pdf";
   if (
     [
       "doc",
       "docx",
-      "pdf",
       "rtf",
       "pages",
       "png",
@@ -158,7 +374,8 @@ function classifyFile(file: File): Kind {
   if (mime.includes("csv") || mime === "text/plain" || mime.includes("tab-separated")) {
     return "delimited";
   }
-  if (mime.startsWith("image/") || mime.includes("pdf") || mime.includes("word")) {
+  if (mime.includes("pdf")) return "pdf";
+  if (mime.startsWith("image/") || mime.includes("word")) {
     return "document";
   }
   return "unknown";
@@ -636,9 +853,10 @@ function parseDelimitedText(text: string, sourceType: SourceType, warnings: stri
 }
 
 /**
- * ניתוח קובץ שהעלה המשתמש. תומך ב-Excel (‎.xlsx/.xls) ו-CSV/TSV (עם BOM
- * וקידוד עברי). קבצי מסמך/תמונה מנותבים דרך documentTextExtractor שזורק
- * שגיאה ברורה "עדיין לא נתמך" — לא מייבאים בשקט שום דבר.
+ * ניתוח קובץ שהעלה המשתמש. תומך ב-Excel (‎.xlsx/.xls), CSV/TSV (עם BOM
+ * וקידוד עברי), ו-PDF בעל שכבת טקסט (חילוץ שמות לפי עמודות). קבצי Word/תמונה
+ * מנותבים דרך documentTextExtractor שזורק שגיאה ברורה "עדיין לא נתמך" — לא
+ * מייבאים בשקט שום דבר.
  */
 export async function parseFile(file: File): Promise<ParsedSheet> {
   const kind = classifyFile(file);
@@ -650,6 +868,19 @@ export async function parseFile(file: File): Promise<ParsedSheet> {
     case "delimited": {
       const { text, warning } = await readFileText(file);
       return parseDelimitedText(text, "csv", warning ? [warning] : []);
+    }
+
+    case "pdf": {
+      // חילוץ שכבת-הטקסט → סינון boilerplate → גיליון חד-עמודתי של שמות.
+      const rawLines = await extractPdfLines(file);
+      const names = rawLines.filter((line) => !isPdfBoilerplateLine(line));
+      if (names.length === 0) {
+        throw new Error(
+          `לא זוהו שמות בקובץ ה-PDF "${file.name}". ייתכן שהקובץ אינו רשימת בחורים, ` +
+            `או שאין בו שכבת טקסט. נסו להמיר אותו לקובץ Excel ‎(.xlsx)‎ או ‎CSV.`,
+        );
+      }
+      return buildPdfSheet(names);
     }
 
     case "document":

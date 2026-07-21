@@ -323,7 +323,7 @@ function ImportPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="מקור הנתונים" description="הדביקו טקסט או בחרו קובץ Excel / CSV">
+          <SectionCard title="מקור הנתונים" description="הדביקו טקסט או בחרו קובץ Excel / CSV / PDF">
             <div className="mb-4 inline-flex rounded-lg border border-border bg-muted/40 p-1">
               <button
                 type="button"
@@ -375,12 +375,14 @@ function ImportPage() {
                 <Input
                   id="import-file"
                   type="file"
-                  accept=".csv,.tsv,.txt,.xlsx,.xls"
+                  accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   className="cursor-pointer file:me-3 file:cursor-pointer"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {file ? file.name : "נתמכים: Excel ‎(.xlsx/.xls)‎ ו-CSV/TSV. קידוד עברי מזוהה אוטומטית."}
+                  {file
+                    ? file.name
+                    : "נתמכים: Excel ‎(.xlsx/.xls)‎, CSV/TSV, ו-PDF עם שכבת טקסט. קידוד עברי מזוהה אוטומטית."}
                 </p>
               </div>
             )}
