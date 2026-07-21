@@ -26,18 +26,12 @@ function Onboarding() {
     setLoading(true);
     setError(null);
     try {
-      const { data: y, error: ye } = await supabase
-        .from("yeshivas")
-        .insert({ name: yeshivaName, address })
-        .select()
-        .single();
+      const { data: newYeshivaId, error: ye } = await supabase.rpc("create_yeshiva", {
+        _name: yeshivaName,
+        _address: address || undefined,
+      });
       if (ye) throw ye;
-
-      const { error: pe } = await supabase
-        .from("profiles")
-        .update({ yeshiva_id: y.id })
-        .eq("id", user.id);
-      if (pe) throw pe;
+      const y = { id: newYeshivaId as string };
 
       // default study sessions
       await supabase.from("study_sessions").insert([
