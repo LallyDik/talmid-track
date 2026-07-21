@@ -595,6 +595,50 @@ export type Database = {
           },
         ]
       }
+      yeshiva_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+          yeshiva_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+          yeshiva_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+          yeshiva_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "yeshiva_invites_yeshiva_id_fkey"
+            columns: ["yeshiva_id"]
+            isOneToOne: false
+            referencedRelation: "yeshivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       yeshivas: {
         Row: {
           address: string | null
@@ -621,6 +665,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_yeshiva: { Args: { _yeshiva_id: string }; Returns: undefined }
       create_yeshiva: {
         Args: { _address?: string; _name: string }
         Returns: string
@@ -634,6 +679,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_admin_of: { Args: { _yeshiva_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "staff" | "viewer"
