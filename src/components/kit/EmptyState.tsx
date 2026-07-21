@@ -17,7 +17,10 @@ function renderIcon(icon: IconLike | undefined) {
     return <Inbox className="h-7 w-7" />;
   }
   if (isValidElement(icon)) return icon;
-  if (typeof icon === "function" || (typeof icon === "object" && icon !== null)) {
+  if (
+    typeof icon === "function" ||
+    (typeof icon === "object" && icon !== null && "$$typeof" in icon)
+  ) {
     const Icon = icon as ComponentType<{ className?: string }>;
     return <Icon className="h-7 w-7" />;
   }
