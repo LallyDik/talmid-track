@@ -1,66 +1,74 @@
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import {
+  useDashboardData,
+  useDashboardFilterOptions,
+  type DashboardFilters as Filters,
+} from "@/hooks/useDashboardData";
+import { formatHebrewDate } from "@/lib/hebrew";
+import { StatTiles, DashboardFilters, DashboardCharts, presetRange } from "@/components/dashboard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-3xl font-bold mt-1">{value}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
-    </div>
-  );
+function greetingFor(name: string | null | undefined): string {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first ? `ברוך הבא, ${first}` : "ברוך הבא";
 }
 
 function Dashboard() {
-  const today = new Date().toISOString().slice(0, 10);
+  const { user } = useAuth();
+  const { data: profileData } = useProfile(user?.id);
+  const profile = profileData?.profile;
+  const yeshivaId = profile?.yeshiva_id ?? undefined;
 
-  const { data } = useQuery({
-    queryKey: ["dashboard", today],
-    queryFn: async () => {
-      const [studentsRes, todayRecords, pendingReports] = await Promise.all([
-        supabase.from("students").select("id", { count: "exact", head: true }).eq("active", true),
-        supabase.from("attendance_records").select("attendance_status").eq("report_date", today),
-        supabase
-          .from("attendance_reports")
-          .select("id", { count: "exact", head: true })
-          .in("processing_status", ["pending", "needs_review", "processing"]),
-      ]);
-      const recs = todayRecords.data ?? [];
-      return {
-        activeStudents: studentsRes.count ?? 0,
-        presentToday: recs.filter((r) => r.attendance_status === "on_time").length,
-        lateToday: recs.filter((r) => r.attendance_status === "late_b" || r.attendance_status === "late_c").length,
-        absentToday: recs.filter((r) => r.attendance_status === "absent").length,
-        pendingReports: pendingReports.count ?? 0,
-      };
-    },
+  const [filters, setFilters] = useState<Filters>(() => {
+    const r = presetRange("month");
+    return { from: r.from, to: r.to, classId: null, sessionId: null, status: null, staffId: null };
   });
 
+  const options = useDashboardFilterOptions(yeshivaId);
+  const dashboard = useDashboardData(filters, yeshivaId);
+
+  useEffect(() => {
+    if (dashboard.isError) {
+      toast.error("שגיאה בטעינת נתוני לוח הבקרה. נסו לרענן את העמוד.");
+    }
+  }, [dashboard.isError]);
+
+  const loading = !yeshivaId || dashboard.isLoading;
+  const today = useMemo(() => formatHebrewDate(new Date()), []);
+
   return (
-    <div>
-      <PageHeader title="לוח בקרה" subtitle={`נתונים ליום ${new Date().toLocaleDateString("he-IL")}`} />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="בחורים פעילים" value={data?.activeStudents ?? "—"} />
-        <StatCard label="נוכחים היום" value={data?.presentToday ?? 0} />
-        <StatCard label="מאחרים היום" value={data?.lateToday ?? 0} />
-        <StatCard label="נעדרים היום" value={data?.absentToday ?? 0} />
-        <StatCard label="דוחות ממתינים לאישור" value={data?.pendingReports ?? 0} />
-      </div>
-      <div className="mt-8 bg-card border border-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-2">התחלה מהירה</h2>
-        <ul className="list-disc pr-5 text-sm text-muted-foreground space-y-1">
-          <li>הוסף בחורים במסך "בחורים"</li>
-          <li>העלה דוח נוכחות סרוק במסך "העלאת דוח"</li>
-          <li>אשר את הזיהוי במסך "דוחות נוכחות"</li>
-          <li>עקוב אחר בחור בכרטיס האישי שלו</li>
-        </ul>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={greetingFor(profile?.full_name)}
+        subtitle={`${today} · סקירת נוכחות ומעקב אחר הבחורים`}
+      />
+
+      <DashboardFilters
+        filters={filters}
+        onChange={setFilters}
+        options={options.data}
+        optionsLoading={options.isLoading}
+      />
+
+      {dashboard.isError && (
+        <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <span>לא ניתן היה לטעון חלק מהנתונים. ודאו חיבור לרשת ונסו שוב.</span>
+        </div>
+      )}
+
+      <StatTiles tiles={dashboard.data?.tiles} loading={loading} />
+
+      <DashboardCharts charts={dashboard.data?.charts} loading={loading} />
     </div>
   );
 }

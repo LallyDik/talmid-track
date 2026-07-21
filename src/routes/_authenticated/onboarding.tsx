@@ -31,6 +31,8 @@ function Onboarding() {
         _address: address || undefined,
       });
       if (ye) throw ye;
+      // create_yeshiva (SECURITY DEFINER) already creates the yeshiva AND claims
+      // it for the current user (sets profiles.yeshiva_id). No separate claim needed.
       const y = { id: newYeshivaId as string };
 
       // default study sessions

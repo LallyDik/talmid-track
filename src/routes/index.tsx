@@ -18,6 +18,7 @@ function Landing() {
         <div className="flex gap-3 justify-center">
           <Link
             to="/auth"
+            search={{ mode: "signin" as const }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground hover:opacity-90 transition"
           >
             כניסה למערכת

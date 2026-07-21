@@ -5,13 +5,20 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * Design system definition — "ניהול הישיבה".
+ *
+ * Palette direction: a warm, welcoming light theme built around a friendly
+ * TEAL primary and a cheerful HONEY/GOLD accent, resting on a soft warm-ivory
+ * background with warm-neutral greys (hue ~70-85 instead of the old cold
+ * slate/navy at hue ~250-265). Surfaces get soft shadows, gentle gradients and
+ * rounded-xl corners so the app reads as inviting rather than corporate.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
  * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * All colors MUST use oklch format. Variable NAMES are stable — other code
+ * depends on them; only the VALUES change here.
  *
  * To add a new semantic color:
  * 1. Add the variable to :root (light value) and .dark (dark value)
@@ -59,84 +66,103 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-status-on-time: var(--status-on-time);
+  --color-status-late-b: var(--status-late-b);
+  --color-status-late-c: var(--status-late-c);
+  --color-status-absent: var(--status-absent);
+  --color-status-excused: var(--status-excused);
+  --color-status-unknown: var(--status-unknown);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.22 0.04 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.04 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.04 260);
-  --primary: oklch(0.42 0.13 250);
-  --primary-foreground: oklch(0.99 0.005 250);
-  --secondary: oklch(0.955 0.01 250);
-  --secondary-foreground: oklch(0.28 0.05 260);
-  --muted: oklch(0.96 0.008 250);
-  --muted-foreground: oklch(0.5 0.03 260);
-  --accent: oklch(0.93 0.03 220);
-  --accent-foreground: oklch(0.25 0.06 260);
-  --destructive: oklch(0.57 0.22 25);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.9 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.55 0.13 250);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.28 0.05 260);
-  --sidebar-foreground: oklch(0.97 0.005 250);
-  --sidebar-primary: oklch(0.55 0.15 250);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.35 0.06 260);
-  --sidebar-accent-foreground: oklch(0.98 0.005 250);
-  --sidebar-border: oklch(0.35 0.05 260);
-  --sidebar-ring: oklch(0.6 0.15 250);
-  /* Attendance status colors */
-  --status-on-time: oklch(0.7 0.17 145);
-  --status-late-b: oklch(0.82 0.16 90);
-  --status-late-c: oklch(0.72 0.18 55);
-  --status-absent: oklch(0.62 0.22 25);
-  --status-excused: oklch(0.65 0.14 240);
-  --status-unknown: oklch(0.75 0.015 250);
+  --radius: 0.75rem;
+  /* Warm ivory canvas + warm charcoal ink */
+  --background: oklch(0.99 0.008 85);
+  --foreground: oklch(0.27 0.02 65);
+  --card: oklch(0.998 0.004 90);
+  --card-foreground: oklch(0.27 0.02 65);
+  --popover: oklch(1 0.002 90);
+  --popover-foreground: oklch(0.27 0.02 65);
+  /* Friendly teal primary */
+  --primary: oklch(0.55 0.1 195);
+  --primary-foreground: oklch(0.99 0.01 195);
+  /* Warm sand secondary */
+  --secondary: oklch(0.95 0.022 88);
+  --secondary-foreground: oklch(0.34 0.03 72);
+  --muted: oklch(0.965 0.014 85);
+  --muted-foreground: oklch(0.53 0.025 72);
+  /* Cheerful honey accent */
+  --accent: oklch(0.92 0.055 86);
+  --accent-foreground: oklch(0.36 0.06 72);
+  --destructive: oklch(0.58 0.2 27);
+  --destructive-foreground: oklch(0.99 0.01 27);
+  --border: oklch(0.9 0.014 82);
+  --input: oklch(0.92 0.014 82);
+  --ring: oklch(0.6 0.09 195);
+  /* Warm, cheerful chart set: teal, honey, coral, violet, green */
+  --chart-1: oklch(0.6 0.11 195);
+  --chart-2: oklch(0.79 0.15 82);
+  --chart-3: oklch(0.68 0.16 45);
+  --chart-4: oklch(0.6 0.14 300);
+  --chart-5: oklch(0.7 0.15 150);
+  /* Deep warm-teal sidebar with a honey active pill */
+  --sidebar: oklch(0.35 0.05 200);
+  --sidebar-foreground: oklch(0.96 0.012 190);
+  --sidebar-primary: oklch(0.81 0.14 85);
+  --sidebar-primary-foreground: oklch(0.29 0.05 72);
+  --sidebar-accent: oklch(0.41 0.05 198);
+  --sidebar-accent-foreground: oklch(0.97 0.01 190);
+  --sidebar-border: oklch(0.43 0.045 198);
+  --sidebar-ring: oklch(0.81 0.14 85);
+  /* Attendance status colors: green / amber / orange / red / blue / grey */
+  --status-on-time: oklch(0.63 0.15 150);
+  --status-late-b: oklch(0.8 0.15 85);
+  --status-late-c: oklch(0.68 0.17 55);
+  --status-absent: oklch(0.58 0.2 27);
+  --status-excused: oklch(0.58 0.13 235);
+  --status-unknown: oklch(0.72 0.014 80);
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
+  /* Warm-tinted deep charcoal, still coherent with the teal brand */
+  --background: oklch(0.19 0.012 220);
+  --foreground: oklch(0.96 0.008 85);
+  --card: oklch(0.23 0.014 222);
+  --card-foreground: oklch(0.96 0.008 85);
+  --popover: oklch(0.23 0.014 222);
+  --popover-foreground: oklch(0.96 0.008 85);
+  --primary: oklch(0.72 0.11 190);
+  --primary-foreground: oklch(0.19 0.03 210);
+  --secondary: oklch(0.28 0.016 222);
+  --secondary-foreground: oklch(0.96 0.008 85);
+  --muted: oklch(0.28 0.016 222);
+  --muted-foreground: oklch(0.72 0.02 88);
+  --accent: oklch(0.32 0.035 90);
+  --accent-foreground: oklch(0.95 0.02 88);
+  --destructive: oklch(0.64 0.19 26);
+  --destructive-foreground: oklch(0.98 0.01 26);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --ring: oklch(0.68 0.1 190);
+  --chart-1: oklch(0.7 0.12 190);
+  --chart-2: oklch(0.82 0.15 84);
+  --chart-3: oklch(0.72 0.16 48);
+  --chart-4: oklch(0.68 0.15 300);
+  --chart-5: oklch(0.74 0.15 152);
+  --sidebar: oklch(0.17 0.012 222);
+  --sidebar-foreground: oklch(0.95 0.008 88);
+  --sidebar-primary: oklch(0.81 0.14 85);
+  --sidebar-primary-foreground: oklch(0.24 0.04 72);
+  --sidebar-accent: oklch(0.26 0.02 222);
+  --sidebar-accent-foreground: oklch(0.95 0.008 88);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.81 0.14 85);
+  --status-on-time: oklch(0.68 0.15 150);
+  --status-late-b: oklch(0.82 0.15 85);
+  --status-late-c: oklch(0.72 0.16 55);
+  --status-absent: oklch(0.64 0.19 27);
+  --status-excused: oklch(0.65 0.14 235);
+  --status-unknown: oklch(0.6 0.014 80);
 }
 
 @layer base {
@@ -148,16 +174,178 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   html {
     direction: rtl;
   }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
 }
 
-@utility status-on-time { background-color: var(--status-on-time); color: white; }
-@utility status-late-b { background-color: var(--status-late-b); color: oklch(0.22 0.04 260); }
-@utility status-late-c { background-color: var(--status-late-c); color: white; }
-@utility status-absent { background-color: var(--status-absent); color: white; }
-@utility status-excused { background-color: var(--status-excused); color: white; }
-@utility status-unknown { background-color: var(--status-unknown); color: oklch(0.3 0.03 260); }
+/* ------------------------------------------------------------------ *
+ * Depth + surface utilities
+ * ------------------------------------------------------------------ */
+@utility shadow-soft {
+  box-shadow:
+    0 1px 2px -1px oklch(0.4 0.03 240 / 0.08),
+    0 4px 16px -6px oklch(0.4 0.03 240 / 0.12);
+}
+
+@utility shadow-card {
+  box-shadow:
+    0 1px 2px oklch(0.4 0.03 240 / 0.06),
+    0 8px 24px -12px oklch(0.4 0.03 240 / 0.16);
+}
+
+@utility shadow-lift {
+  box-shadow:
+    0 2px 4px oklch(0.4 0.03 240 / 0.08),
+    0 16px 36px -14px oklch(0.4 0.03 240 / 0.22);
+}
+
+/* Gentle warm gradient for hero / feature surfaces (expects light text) */
+@utility gradient-hero {
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.5 0.11 200) 0%,
+    oklch(0.58 0.1 178) 55%,
+    oklch(0.66 0.11 155) 100%
+  );
+}
+
+/* Subtle tinted surface for stat tiles (works with foreground text) */
+@utility gradient-surface {
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in oklch, var(--card) 100%, transparent) 0%,
+    color-mix(in oklch, var(--primary) 6%, var(--card)) 100%
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Attendance status utilities — solid, vibrant pills.
+ * hebrew.ts (attendanceClass) references these exact class names.
+ * ------------------------------------------------------------------ */
+@utility status-on-time {
+  background-color: var(--status-on-time);
+  color: oklch(0.99 0.01 150);
+}
+@utility status-late-b {
+  background-color: var(--status-late-b);
+  color: oklch(0.28 0.05 72);
+}
+@utility status-late-c {
+  background-color: var(--status-late-c);
+  color: oklch(0.99 0.01 55);
+}
+@utility status-absent {
+  background-color: var(--status-absent);
+  color: oklch(0.99 0.01 27);
+}
+@utility status-excused {
+  background-color: var(--status-excused);
+  color: oklch(0.99 0.01 235);
+}
+@utility status-unknown {
+  background-color: var(--status-unknown);
+  color: oklch(0.32 0.02 72);
+}
+
+/* ------------------------------------------------------------------ *
+ * Severity utilities — solid pills. hebrew.ts (severityClass) uses these.
+ * ------------------------------------------------------------------ */
+@utility severity-info {
+  background-color: var(--status-excused);
+  color: oklch(0.99 0.01 235);
+}
+@utility severity-low {
+  background-color: var(--status-on-time);
+  color: oklch(0.99 0.01 150);
+}
+@utility severity-medium {
+  background-color: var(--status-late-b);
+  color: oklch(0.28 0.05 72);
+}
+@utility severity-high {
+  background-color: var(--status-late-c);
+  color: oklch(0.99 0.01 55);
+}
+@utility severity-urgent {
+  background-color: var(--status-absent);
+  color: oklch(0.99 0.01 27);
+}
+
+/* ------------------------------------------------------------------ *
+ * Soft tinted badges — used by StatusBadge for student / report /
+ * treatment / task states. Light + dark values kept readable.
+ * ------------------------------------------------------------------ */
+.badge-green {
+  background-color: oklch(0.95 0.05 150);
+  color: oklch(0.42 0.11 150);
+}
+.badge-amber {
+  background-color: oklch(0.95 0.06 88);
+  color: oklch(0.47 0.09 74);
+}
+.badge-orange {
+  background-color: oklch(0.95 0.06 55);
+  color: oklch(0.5 0.13 48);
+}
+.badge-red {
+  background-color: oklch(0.95 0.05 27);
+  color: oklch(0.51 0.17 27);
+}
+.badge-blue {
+  background-color: oklch(0.94 0.045 235);
+  color: oklch(0.48 0.13 240);
+}
+.badge-teal {
+  background-color: oklch(0.94 0.045 192);
+  color: oklch(0.43 0.09 195);
+}
+.badge-violet {
+  background-color: oklch(0.94 0.045 300);
+  color: oklch(0.49 0.14 300);
+}
+.badge-grey {
+  background-color: oklch(0.94 0.006 80);
+  color: oklch(0.46 0.02 72);
+}
+
+.dark .badge-green {
+  background-color: oklch(0.68 0.14 150 / 0.2);
+  color: oklch(0.84 0.13 150);
+}
+.dark .badge-amber {
+  background-color: oklch(0.82 0.14 85 / 0.2);
+  color: oklch(0.87 0.12 85);
+}
+.dark .badge-orange {
+  background-color: oklch(0.72 0.16 55 / 0.2);
+  color: oklch(0.83 0.14 58);
+}
+.dark .badge-red {
+  background-color: oklch(0.64 0.19 27 / 0.24);
+  color: oklch(0.83 0.14 30);
+}
+.dark .badge-blue {
+  background-color: oklch(0.65 0.14 235 / 0.22);
+  color: oklch(0.83 0.12 235);
+}
+.dark .badge-teal {
+  background-color: oklch(0.68 0.1 192 / 0.22);
+  color: oklch(0.84 0.1 192);
+}
+.dark .badge-violet {
+  background-color: oklch(0.68 0.15 300 / 0.22);
+  color: oklch(0.85 0.12 300);
+}
+.dark .badge-grey {
+  background-color: oklch(0.7 0.014 80 / 0.18);
+  color: oklch(0.82 0.014 80);
+}

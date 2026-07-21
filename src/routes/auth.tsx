@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional().default("signin"),
   redirect: z.string().optional(),
+  // Invite token from /auth?invite=<token>. Forwarded to signup so the DB
+  // trigger can verify it server-side before granting a yeshiva/role.
+  invite: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -14,9 +17,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { mode: initialMode, redirect } = Route.useSearch();
+  const { mode: initialMode, redirect, invite } = Route.useSearch();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
+  // An invite link is inherently a "join / create account" flow.
+  const [mode, setMode] = useState<"signin" | "signup">(invite ? "signup" : initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -40,7 +44,7 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName },
+            data: invite ? { full_name: fullName, invite_token: invite } : { full_name: fullName },
           },
         });
         if (error) throw error;
@@ -65,6 +69,11 @@ function AuthPage() {
             {mode === "signin" ? "כניסה למערכת" : "הרשמה למערכת"}
           </h1>
         </div>
+        {invite && (
+          <div className="mb-4 rounded-md bg-primary/10 px-3 py-2 text-sm text-foreground">
+            הוזמנת להצטרף לישיבה. יש להירשם עם כתובת האימייל שאליה נשלחה ההזמנה.
+          </div>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === "signup" && (
             <div>

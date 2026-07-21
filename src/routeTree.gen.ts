@@ -12,11 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticated/classes'
+import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated/alerts'
 import { Route as AuthenticatedStudentsIndexRouteImport } from './routes/_authenticated/students.index'
+import { Route as AuthenticatedStudentsImportRouteImport } from './routes/_authenticated/students.import'
 import { Route as AuthenticatedStudentsIdRouteImport } from './routes/_authenticated/students.$id'
 import { Route as AuthenticatedAttendanceUploadRouteImport } from './routes/_authenticated/attendance.upload'
 import { Route as AuthenticatedAttendanceReportsRouteImport } from './routes/_authenticated/attendance.reports'
@@ -36,9 +41,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
@@ -56,10 +76,21 @@ const AuthenticatedClassesRoute = AuthenticatedClassesRouteImport.update({
   path: '/classes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAlertsRoute = AuthenticatedAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedStudentsIndexRoute =
   AuthenticatedStudentsIndexRouteImport.update({
     id: '/students/',
     path: '/students/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStudentsImportRoute =
+  AuthenticatedStudentsImportRouteImport.update({
+    id: '/students/import',
+    path: '/students/import',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedStudentsIdRoute = AuthenticatedStudentsIdRouteImport.update({
@@ -89,26 +120,36 @@ const AuthenticatedAttendanceVerifyIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/alerts': typeof AuthenticatedAlertsRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
   '/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
   '/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/students/import': typeof AuthenticatedStudentsImportRoute
   '/students/': typeof AuthenticatedStudentsIndexRoute
   '/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/alerts': typeof AuthenticatedAlertsRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
   '/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
   '/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/students/import': typeof AuthenticatedStudentsImportRoute
   '/students': typeof AuthenticatedStudentsIndexRoute
   '/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
@@ -117,13 +158,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
   '/_authenticated/classes': typeof AuthenticatedClassesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/tasks': typeof AuthenticatedTasksRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/attendance/reports': typeof AuthenticatedAttendanceReportsRoute
   '/_authenticated/attendance/upload': typeof AuthenticatedAttendanceUploadRoute
   '/_authenticated/students/$id': typeof AuthenticatedStudentsIdRoute
+  '/_authenticated/students/import': typeof AuthenticatedStudentsImportRoute
   '/_authenticated/students/': typeof AuthenticatedStudentsIndexRoute
   '/_authenticated/attendance/verify/$id': typeof AuthenticatedAttendanceVerifyIdRoute
 }
@@ -132,26 +178,36 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/alerts'
     | '/classes'
     | '/dashboard'
     | '/onboarding'
+    | '/reports'
     | '/settings'
+    | '/tasks'
+    | '/users'
     | '/attendance/reports'
     | '/attendance/upload'
     | '/students/$id'
+    | '/students/import'
     | '/students/'
     | '/attendance/verify/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/alerts'
     | '/classes'
     | '/dashboard'
     | '/onboarding'
+    | '/reports'
     | '/settings'
+    | '/tasks'
+    | '/users'
     | '/attendance/reports'
     | '/attendance/upload'
     | '/students/$id'
+    | '/students/import'
     | '/students'
     | '/attendance/verify/$id'
   id:
@@ -159,13 +215,18 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/alerts'
     | '/_authenticated/classes'
     | '/_authenticated/dashboard'
     | '/_authenticated/onboarding'
+    | '/_authenticated/reports'
     | '/_authenticated/settings'
+    | '/_authenticated/tasks'
+    | '/_authenticated/users'
     | '/_authenticated/attendance/reports'
     | '/_authenticated/attendance/upload'
     | '/_authenticated/students/$id'
+    | '/_authenticated/students/import'
     | '/_authenticated/students/'
     | '/_authenticated/attendance/verify/$id'
   fileRoutesById: FileRoutesById
@@ -199,11 +260,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tasks': {
+      id: '/_authenticated/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/onboarding': {
@@ -227,11 +309,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClassesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/alerts': {
+      id: '/_authenticated/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AuthenticatedAlertsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/students/': {
       id: '/_authenticated/students/'
       path: '/students'
       fullPath: '/students/'
       preLoaderRoute: typeof AuthenticatedStudentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/students/import': {
+      id: '/_authenticated/students/import'
+      path: '/students/import'
+      fullPath: '/students/import'
+      preLoaderRoute: typeof AuthenticatedStudentsImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/students/$id': {
@@ -266,25 +362,35 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAlertsRoute: typeof AuthenticatedAlertsRoute
   AuthenticatedClassesRoute: typeof AuthenticatedClassesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedAttendanceReportsRoute: typeof AuthenticatedAttendanceReportsRoute
   AuthenticatedAttendanceUploadRoute: typeof AuthenticatedAttendanceUploadRoute
   AuthenticatedStudentsIdRoute: typeof AuthenticatedStudentsIdRoute
+  AuthenticatedStudentsImportRoute: typeof AuthenticatedStudentsImportRoute
   AuthenticatedStudentsIndexRoute: typeof AuthenticatedStudentsIndexRoute
   AuthenticatedAttendanceVerifyIdRoute: typeof AuthenticatedAttendanceVerifyIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAlertsRoute: AuthenticatedAlertsRoute,
   AuthenticatedClassesRoute: AuthenticatedClassesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedTasksRoute: AuthenticatedTasksRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedAttendanceReportsRoute: AuthenticatedAttendanceReportsRoute,
   AuthenticatedAttendanceUploadRoute: AuthenticatedAttendanceUploadRoute,
   AuthenticatedStudentsIdRoute: AuthenticatedStudentsIdRoute,
+  AuthenticatedStudentsImportRoute: AuthenticatedStudentsImportRoute,
   AuthenticatedStudentsIndexRoute: AuthenticatedStudentsIndexRoute,
   AuthenticatedAttendanceVerifyIdRoute: AuthenticatedAttendanceVerifyIdRoute,
 }
@@ -300,3 +406,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

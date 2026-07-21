@@ -8,26 +8,35 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Compass, Home, RotateCw, TriangleAlert } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-10 text-center shadow-card">
+        <div
+          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl text-primary"
+          style={{ backgroundColor: "color-mix(in oklch, var(--primary) 14%, transparent)" }}
+        >
+          <Compass className="h-8 w-8" />
+        </div>
+        <h1 className="text-5xl font-extrabold tracking-tight text-foreground">404</h1>
+        <h2 className="mt-3 text-lg font-semibold text-foreground">הדף לא נמצא</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          הדף שחיפשתם אינו קיים או שהועבר למקום אחר.
         </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
+        <div className="mt-7">
+          <Button asChild>
+            <Link to="/">
+              <Home className="h-4 w-4" />
+              חזרה לדף הבית
+            </Link>
+          </Button>
         </div>
       </div>
     </div>
@@ -43,29 +52,35 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-10 text-center shadow-card">
+        <div
+          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl text-destructive"
+          style={{ backgroundColor: "color-mix(in oklch, var(--destructive) 14%, transparent)" }}
+        >
+          <TriangleAlert className="h-8 w-8" />
+        </div>
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">
+          אירעה שגיאה בטעינת הדף
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          משהו השתבש. אפשר לנסות לרענן את הדף או לחזור לדף הבית.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
+        <div className="mt-7 flex flex-wrap justify-center gap-2">
+          <Button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
+            <RotateCw className="h-4 w-4" />
+            נסה שוב
+          </Button>
+          <Button asChild variant="outline">
+            <a href="/">
+              <Home className="h-4 w-4" />
+              חזרה לדף הבית
+            </a>
+          </Button>
         </div>
       </div>
     </div>
@@ -122,6 +137,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster richColors position="top-center" dir="rtl" />
     </QueryClientProvider>
   );
 }
