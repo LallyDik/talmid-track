@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import { isValidElement, type ComponentType, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type StatTone =
@@ -35,7 +35,11 @@ export interface StatCardProps {
 
 function renderIcon(icon: IconLike | undefined) {
   if (!icon) return null;
-  if (typeof icon === "function") {
+  if (isValidElement(icon)) return icon;
+  if (
+    typeof icon === "function" ||
+    (typeof icon === "object" && icon !== null && "$$typeof" in icon)
+  ) {
     const Icon = icon as ComponentType<{ className?: string }>;
     return <Icon className="h-5 w-5" />;
   }
