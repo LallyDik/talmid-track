@@ -28,7 +28,7 @@ function Onboarding() {
     try {
       const { data: newYeshivaId, error: ye } = await supabase.rpc("create_yeshiva", {
         _name: yeshivaName,
-        _address: address || null,
+        _address: address || undefined,
       });
       if (ye) throw ye;
       const y = { id: newYeshivaId as string };
