@@ -31,7 +31,7 @@ function Onboarding() {
         _address: address || null,
       });
       if (ye) throw ye;
-      const y = { id: newYeshivaId as unknown as string };
+      const y = { id: newYeshivaId as string };
 
       // default study sessions
       await supabase.from("study_sessions").insert([
