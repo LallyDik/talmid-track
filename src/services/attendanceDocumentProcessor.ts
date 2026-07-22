@@ -344,7 +344,9 @@ const DEFAULT_COLUMN_COUNT =
 /** חפיפה אופקית בין פסים (כשבר מרוחב הפס) כדי לא לחתוך שם על הגבול. */
 const COLUMN_OVERLAP = 0.04;
 /** קנה-מידה לרסטריזציה של PDF (‎~2x לחדות סבירה בכתב-יד). */
-const RASTER_SCALE = 2;
+const RASTER_SCALE = 3;
+/** חפיפה אנכית בין רצועות-שורות, כדי ששורה לא תיחתך באמצע. */
+const ROW_BAND_OVERLAP = 0.03;
 /** כמה פסים לשלוח במקביל ל-Edge Function. */
 const STRIP_CONCURRENCY = 3;
 /** סף התאמת-שם מינימלי (מתחתיו הזיהוי נזרק, הבחור נשאר "נעדר"). */
@@ -407,28 +409,48 @@ function splitDataUrl(dataUrl: string): { base64: string; mediaType: string } {
   return { base64, mediaType: m?.[1] ?? "image/png" };
 }
 
-/** חותך קנבס אנכית ל-N פסים עם חפיפה קלה; מחזיר data URLs. */
+/**
+ * חותך את העמוד לאריחים: קודם אנכית ל-N עמודות, ואז כל עמודה אופקית
+ * לרצועות-שורות ~ריבועיות.
+ *
+ * למה גם אופקית: עמודה שלמה היא תמונה עם 60–200 שורות, וסימון-יד זעיר
+ * "נבלע" בה (וגם עלולה לרדת ברזולוציה בצד המודל). אריח ~ריבועי מכיל
+ * מעט שורות, כך שכל וי/קו תופס הרבה יותר פיקסלים ונקרא הרבה יותר טוב.
+ */
 function splitCanvasToStrips(
   source: HTMLCanvasElement,
   columns: number,
   overlap: number,
 ): string[] {
-  if (columns <= 1) return [source.toDataURL("image/png")];
-  const stripW = source.width / columns;
-  const pad = stripW * overlap;
+  const cols = Math.max(1, columns);
+  const stripW = source.width / cols;
+  const padX = cols > 1 ? stripW * overlap : 0;
   const out: string[] = [];
-  for (let i = 0; i < columns; i++) {
-    const sx = Math.max(0, Math.floor(i * stripW - pad));
-    const sxEnd = Math.min(source.width, Math.ceil((i + 1) * stripW + pad));
+
+  for (let i = 0; i < cols; i++) {
+    const sx = Math.max(0, Math.floor(i * stripW - padX));
+    const sxEnd = Math.min(source.width, Math.ceil((i + 1) * stripW + padX));
     const sw = sxEnd - sx;
     if (sw <= 0) continue;
-    const strip = document.createElement("canvas");
-    strip.width = sw;
-    strip.height = source.height;
-    const ctx = strip.getContext("2d");
-    if (!ctx) continue;
-    ctx.drawImage(source, sx, 0, sw, source.height, 0, 0, sw, source.height);
-    out.push(strip.toDataURL("image/png"));
+
+    // מספר רצועות-שורות כך שכל אריח יֵצא בערך ריבועי.
+    const bands = Math.max(1, Math.round(source.height / sw));
+    const bandH = source.height / bands;
+    const padY = bands > 1 ? bandH * ROW_BAND_OVERLAP : 0;
+
+    for (let b = 0; b < bands; b++) {
+      const sy = Math.max(0, Math.floor(b * bandH - padY));
+      const syEnd = Math.min(source.height, Math.ceil((b + 1) * bandH + padY));
+      const sh = syEnd - sy;
+      if (sh <= 0) continue;
+      const tile = document.createElement("canvas");
+      tile.width = sw;
+      tile.height = sh;
+      const ctx = tile.getContext("2d");
+      if (!ctx) continue;
+      ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      out.push(tile.toDataURL("image/png"));
+    }
   }
   return out;
 }
