@@ -172,7 +172,7 @@ function UploadPage() {
           .eq("id", report.id);
         if (updErr) throw updErr;
 
-        return { reportId: report.id as string, resolved };
+        return { reportId: report.id as string, resolved, raw };
       } catch (err) {
         const msg = err instanceof Error ? err.message : "שגיאה לא ידועה";
         await supabase
@@ -185,13 +185,24 @@ function UploadPage() {
         throw err;
       }
     },
-    onSuccess: ({ reportId, resolved }) => {
+    onSuccess: ({ reportId, resolved, raw }) => {
       const flagged =
         resolved.undetectedCount + resolved.lowConfidenceCount > 0
           ? ` ${resolved.undetectedCount + resolved.lowConfidenceCount} רשומות מסומנות לבדיקה.`
           : "";
       toast.success(
         `הזיהוי הראשוני הושלם עבור ${resolved.records.length} בחורים.${flagged} יש לאשר במסך האימות.`,
+      );
+      // חיווי אבחון — כמה שורות המנוע קרא, כמה הותאמו לרשימה, וכמה שמות לא הותאמו.
+      const d = raw as {
+        detected_rows?: number;
+        matched?: number;
+        unmatched_names?: string[];
+      };
+      toast.info(
+        `זיהוי: נקראו ${d.detected_rows ?? 0} שורות · הותאמו ${d.matched ?? 0} · ` +
+          `${d.unmatched_names?.length ?? 0} שמות לא הותאמו`,
+        { duration: 12000 },
       );
       navigate({ to: "/attendance/verify/$id", params: { id: reportId } });
     },

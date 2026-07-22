@@ -336,7 +336,11 @@ class HttpProcessor implements AttendanceDocumentProcessor {
 /** עמודות-הסימון הקיימות בדף כברירת מחדל. שנו ל-["א","ב","ג"] בדפים עם עמודת ג׳. */
 const MARK_COLUMNS = ["א", "ב", "ג"];
 /** כמות פסי-עמודות ברירת מחדל לחיתוך עמוד רחב. */
-const DEFAULT_COLUMN_COUNT = 4;
+// מספר העמודות הפיזיות שהדף מחולק אליהן לפני שליחה למנוע הזיהוי.
+// ניתן לכוונון דרך VITE_ATTENDANCE_PHYSICAL_COLUMNS (למשל 3 לדף 3-עמודות,
+// או 1 לשליחת העמוד השלם — שומר שם+סימונים יחד ומונע פיצול). ברירת מחדל 4.
+const DEFAULT_COLUMN_COUNT =
+  Number(import.meta.env.VITE_ATTENDANCE_PHYSICAL_COLUMNS) || 4;
 /** חפיפה אופקית בין פסים (כשבר מרוחב הפס) כדי לא לחתוך שם על הגבול. */
 const COLUMN_OVERLAP = 0.04;
 /** קנה-מידה לרסטריזציה של PDF (‎~2x לחדות סבירה בכתב-יד). */
