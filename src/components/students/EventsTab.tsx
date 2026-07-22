@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { safeStorageKey } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CalendarClock, Loader2, Paperclip, Plus } from "lucide-react";
@@ -108,7 +109,7 @@ export function EventsTab({
 
       // Optional file attachment -> student-documents bucket + table.
       if (file) {
-        const path = `${yeshivaId}/${studentId}/${crypto.randomUUID()}-${file.name}`;
+        const path = safeStorageKey(`${yeshivaId}/${studentId}`, file.name);
         const { error: upErr } = await supabase.storage
           .from("student-documents")
           .upload(path, file);

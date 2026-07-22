@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import { safeStorageKey } from "@/lib/utils";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -60,7 +61,7 @@ export function DocumentsTab({
     mutationFn: async () => {
       if (!yeshivaId) throw new Error("missing yeshiva");
       if (!file) throw new Error("no file");
-      const path = `${yeshivaId}/${studentId}/${crypto.randomUUID()}-${file.name}`;
+      const path = safeStorageKey(`${yeshivaId}/${studentId}`, file.name);
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, file);

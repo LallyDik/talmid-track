@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
+import { safeStorageKey } from "@/lib/utils";
 import { toast } from "sonner";
 import { UploadCloud, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +81,7 @@ function UploadPage() {
       let fileUrl: string | null = null;
       let fileName: string | null = null;
       if (payload.file) {
-        const path = `${yeshivaId}/${payload.date}/${crypto.randomUUID()}-${payload.file.name}`;
+        const path = safeStorageKey(`${yeshivaId}/${payload.date}`, payload.file.name);
         const { error: upErr } = await supabase.storage
           .from("attendance-reports")
           .upload(path, payload.file);
