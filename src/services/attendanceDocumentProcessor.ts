@@ -753,9 +753,19 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
             "לא זוהו סימוני נוכחות בקובץ. ודאו שהסריקה ברורה ומכילה דף רישום נוכחות.",
         );
       }
+      // מציגים דוגמאות משני הצדדים כדי שאפשר יהיה לראות מיד היכן הפער.
+      const sampleDetected = detected
+        .slice(0, 4)
+        .map((d) => d.name)
+        .filter(Boolean)
+        .join(" | ");
+      const sampleRoster = students
+        .slice(0, 4)
+        .map((s) => s.full_name)
+        .join(" | ");
       throw new Error(
-        `זוהו ${detected.length} שורות בקובץ אך אף שם לא הותאם לרשימת הבחורים בשיעור. ` +
-          `ודאו שרשימת הבחורים תואמת לדף שהועלה.`,
+        `זוהו ${detected.length} שורות בקובץ אך אף שם לא הותאם לרשימת הבחורים. ` +
+          `זוהו בדף: [${sampleDetected || "—"}] · ברשימה: [${sampleRoster || "—"}]`,
       );
     }
 
