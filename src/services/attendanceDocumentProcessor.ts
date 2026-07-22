@@ -66,6 +66,9 @@ export interface DetectionResult {
 export interface ProcessorInput {
   fileUrl: string;
   fileName?: string | null;
+  /** הקובץ הגולמי אם הוא כבר בזיכרון (למשל מיד לאחר בחירה/העלאה). כשמסופק,
+   *  מדלגים על הורדה חוזרת מ-Storage — מהיר יותר וללא כשלי רשת/CORS. */
+  file?: Blob | null;
   students: StudentInput[];
   context?: ProcessorContext;
 }
@@ -594,26 +597,34 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
   async process({
     fileUrl,
     fileName,
+    file,
     students,
     context,
   }: ProcessorInput): Promise<ProcessorOutput> {
     if (typeof window === "undefined") {
       throw new Error("זיהוי הנוכחות האוטומטי זמין רק בדפדפן.");
     }
-    if (!fileUrl) {
+    if (!file && !fileUrl) {
       throw new Error(
         "לא צורף קובץ סרוק לזיהוי. יש להעלות תמונה או PDF של דף רישום הנוכחות.",
       );
     }
 
-    // 1) הורדת הקובץ מה-Storage.
-    const { data: blob, error: dlErr } = await supabase.storage
-      .from("attendance-reports")
-      .download(fileUrl);
-    if (dlErr || !blob) {
-      throw new Error(
-        `הורדת הקובץ הסרוק נכשלה: ${dlErr?.message ?? "הקובץ לא נמצא ב-Storage"}.`,
-      );
+    // 1) קבלת בייטים לעיבוד: עדיפות לקובץ שכבר בזיכרון (מונע הורדה חוזרת
+    //    מ-Storage שנכשלת לעיתים בגלל סינון/CORS). אחרת — הורדה מ-Storage.
+    let blob: Blob;
+    if (file) {
+      blob = file;
+    } else {
+      const { data, error: dlErr } = await supabase.storage
+        .from("attendance-reports")
+        .download(fileUrl);
+      if (dlErr || !data) {
+        throw new Error(
+          `הורדת הקובץ הסרוק נכשלה: ${dlErr?.message ?? "הקובץ לא נמצא ב-Storage"}.`,
+        );
+      }
+      blob = data;
     }
 
     // 2) רסטריזציה לפסי-עמודות.

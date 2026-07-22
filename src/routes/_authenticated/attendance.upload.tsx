@@ -131,6 +131,7 @@ function UploadPage() {
         const { results, raw } = await attendanceDocumentProcessor.process({
           fileUrl: fileUrl ?? "",
           fileName,
+          file: payload.file ?? null,
           students: roster,
           context: {
             studySessionId: payload.sessionId,
