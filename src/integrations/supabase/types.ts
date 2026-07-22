@@ -938,11 +938,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_yeshiva: { Args: { _yeshiva_id: string }; Returns: undefined }
-      create_yeshiva: {
-        Args: { _address?: string; _name: string }
-        Returns: string
-      }
       get_my_yeshiva_id: { Args: never; Returns: string }
       has_role: {
         Args: {
