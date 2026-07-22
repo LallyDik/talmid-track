@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
+import { useServerFn } from "@tanstack/react-start";
+import { createYeshiva } from "@/lib/yeshivas.functions";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: Onboarding,
@@ -13,6 +15,7 @@ function Onboarding() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const createYeshivaFn = useServerFn(createYeshiva);
   const [step, setStep] = useState(1);
   const [yeshivaName, setYeshivaName] = useState("");
   const [address, setAddress] = useState("");
@@ -26,14 +29,11 @@ function Onboarding() {
     setLoading(true);
     setError(null);
     try {
-      const { data: newYeshivaId, error: ye } = await supabase.rpc("create_yeshiva", {
-        _name: yeshivaName,
-        _address: address || undefined,
+      // Server function creates the yeshiva and links it to the current user's
+      // profile using admin credentials, avoiding a public SECURITY DEFINER RPC.
+      const y = await createYeshivaFn({
+        data: { name: yeshivaName, address: address || null },
       });
-      if (ye) throw ye;
-      // create_yeshiva (SECURITY DEFINER) already creates the yeshiva AND claims
-      // it for the current user (sets profiles.yeshiva_id). No separate claim needed.
-      const y = { id: newYeshivaId as string };
 
       // default study sessions
       await supabase.from("study_sessions").insert([
