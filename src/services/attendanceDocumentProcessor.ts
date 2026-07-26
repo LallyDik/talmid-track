@@ -419,6 +419,48 @@ function splitDataUrl(dataUrl: string): { base64: string; mediaType: string } {
  * "נבלע" בה (וגם עלולה לרדת ברזולוציה בצד המודל). אריח ~ריבועי מכיל
  * מעט שורות, כך שכל וי/קו תופס הרבה יותר פיקסלים ונקרא הרבה יותר טוב.
  */
+/** עוצמת-הכהות הממוצעת של כל שורת-פיקסלים (0=לבן, 255=שחור). לזיהוי מרווחים. */
+function rowDarkness(canvas: HTMLCanvasElement): Float32Array {
+  const { width, height } = canvas;
+  const dark = new Float32Array(height);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx || width === 0) return dark;
+  const data = ctx.getImageData(0, 0, width, height).data;
+  for (let y = 0; y < height; y++) {
+    let sum = 0;
+    const base = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const o = base + x * 4;
+      sum += 255 - (data[o] + data[o + 1] + data[o + 2]) / 3;
+    }
+    dark[y] = sum / width;
+  }
+  return dark;
+}
+
+/** גבולות-חיתוך אנכיים המוצמדים למרווחים הלבנים בין שורות-הטקסט. */
+function findBandCuts(dark: Float32Array, height: number, bands: number): number[] {
+  const cuts = [0];
+  const bandH = height / bands;
+  const win = Math.max(2, Math.round(bandH * 0.4));
+  for (let k = 1; k < bands; k++) {
+    const target = Math.round(k * bandH);
+    let best = target;
+    let bestVal = Infinity;
+    const from = Math.max(1, target - win);
+    const to = Math.min(height - 1, target + win);
+    for (let y = from; y <= to; y++) {
+      if (dark[y] < bestVal) {
+        bestVal = dark[y];
+        best = y;
+      }
+    }
+    cuts.push(best);
+  }
+  cuts.push(height);
+  return cuts;
+}
+
 function splitCanvasToStrips(
   source: HTMLCanvasElement,
   columns: number,
@@ -435,24 +477,49 @@ function splitCanvasToStrips(
     const sw = sxEnd - sx;
     if (sw <= 0) continue;
 
-    // מספר רצועות-שורות כך שכל אריח יֵצא בערך ריבועי.
-    const bands = Math.max(1, Math.round(source.height / sw));
-    const bandH = source.height / bands;
-    const padY = bands > 1 ? bandH * ROW_BAND_OVERLAP : 0;
+    // מחלצים את העמודה לקנבס נפרד (בלי פילטר) — משמש גם לניתוח מרווחים
+    // וגם כמקור-ציור, כדי לחתוך רק בין שורות ולא באמצע שם.
+    const col = document.createElement("canvas");
+    col.width = sw;
+    col.height = source.height;
+    const cctx = col.getContext("2d", { willReadFrequently: true });
+    if (!cctx) continue;
+    cctx.imageSmoothingEnabled = true;
+    cctx.imageSmoothingQuality = "high";
+    cctx.drawImage(source, sx, 0, sw, source.height, 0, 0, sw, source.height);
 
-    for (let b = 0; b < bands; b++) {
-      const sy = Math.max(0, Math.floor(b * bandH - padY));
-      const syEnd = Math.min(source.height, Math.ceil((b + 1) * bandH + padY));
+    // מספר רצועות כך שכל אריח יֵצא בערך ריבועי, וחיתוך מוצמד למרווחים.
+    const bands = Math.max(1, Math.round(source.height / sw));
+    let cuts: number[];
+    try {
+      cuts =
+        bands > 1
+          ? findBandCuts(rowDarkness(col), source.height, bands)
+          : [0, source.height];
+    } catch {
+      // אם קריאת הפיקסלים נכשלת — נופלים לחלוקה שווה.
+      cuts = [];
+      for (let b = 0; b <= bands; b++) cuts.push(Math.round((b * source.height) / bands));
+    }
+
+    for (let b = 0; b < cuts.length - 1; b++) {
+      const cy = cuts[b];
+      const cyEnd = cuts[b + 1];
+      const padY = bands > 1 ? Math.round((cyEnd - cy) * ROW_BAND_OVERLAP) : 0;
+      const sy = Math.max(0, cy - padY);
+      const syEnd = Math.min(source.height, cyEnd + padY);
       const sh = syEnd - sy;
-      if (sh <= 0) continue;
+      if (sh <= 4) continue;
       const tile = document.createElement("canvas");
       tile.width = sw;
       tile.height = sh;
-      const ctx = tile.getContext("2d");
-      if (!ctx) continue;
-      // חידוד ניגודיות כדי שסימונים דהויים יבלטו לפני שליחה למודל.
-      ctx.filter = TILE_FILTER;
-      ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      const tctx = tile.getContext("2d");
+      if (!tctx) continue;
+      tctx.imageSmoothingEnabled = true;
+      tctx.imageSmoothingQuality = "high";
+      // חידוד ניגודיות כדי שטקסט וסימונים דהויים יבלטו לפני שליחה למודל.
+      tctx.filter = TILE_FILTER;
+      tctx.drawImage(col, 0, sy, sw, sh, 0, 0, sw, sh);
       out.push(tile.toDataURL("image/png"));
     }
   }
