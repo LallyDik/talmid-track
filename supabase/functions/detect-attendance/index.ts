@@ -92,27 +92,35 @@ interface ImageResult {
 
 /** בונה את ה-prompt לעמודה בודדת, מודע לעמודות-הסימון הקיימות בדף. */
 function buildPrompt(columns: string[]): string {
-  const cols = columns.length ? columns.join(" / ") : "א / ב";
+  const cols = columns.length ? columns.join(", ") : "א, ב";
+  const a = columns[0] ?? "א";
+  const b = columns[1] ?? "ב";
+  const c = columns[2] ?? "ג";
   return [
     "You are reading ONE physical column of a scanned Hebrew (right-to-left) yeshiva attendance sheet.",
-    `This column is a small table whose header row is "השם" followed by the mark columns: ${cols}.`,
+    "Each body row is ONE student and contains TWO SEPARATE parts:",
+    '  (1) the printed NAME — Hebrew text only (e.g. "וינברג שלום נח ב"ר אברהם").',
+    `  (2) a row of small ATTENDANCE MARK BOXES next to the name, labeled ${cols} in the header. A box may hold a HANDWRITTEN mark, or be empty.`,
     "",
-    "For EVERY body row (one student per row) return:",
-    "  - name: the student's full name EXACTLY as printed in Hebrew. Do NOT translate it, do NOT",
-    '    transliterate it, and do NOT split off the father: keep any ב"ר <father> part attached to the name.',
-    "  - mark: which mark column holds a handwritten checkmark (וי / ✓) or an X:",
-    "      a = the א column, b = the ב column, c = the ג column, none = the row's cells are all empty (absent).",
+    "Return, for EVERY body row:",
+    '  - name: ONLY the printed Hebrew NAME, EXACTLY as printed (keep any ב"ר <father> part).',
+    "    ⚠️ CRITICAL: the name must be Hebrew letters and spaces ONLY. Do NOT copy ANYTHING from the",
+    "    mark boxes into the name — no checkmark, no וי, no slash (/), no X, no dots, no digits, no",
+    "    brackets ] [, no pipes |, no table/grid lines. Such marks belong in `mark`, NEVER in `name`.",
+    `  - mark: examine the ${cols} boxes (identify them by the header letters). A box is MARKED if it`,
+    "    holds ANY handwritten stroke — a checkmark (וי / ✓), a tick, a slash (/), an X, a diagonal line,",
+    "    or any pen scribble. Ignore any mark columns other than these.",
+    `      a = the ${a} box, b = the ${b} box, c = the ${c} box, none = all these boxes are clearly empty.`,
+    "    Most rows DO have a mark — inspect the boxes carefully before answering none. If several look",
+    "    marked, pick the clearest/darkest one.",
     "  - confidence: your 0..1 confidence in the mark reading for that row.",
     "",
-    `The mark columns that physically exist on this sheet are: ${cols}.`,
-    'Never return a mark for a column that does not exist here (e.g. do not return "c" if there is no ג column).',
-    "",
     "SKIP these — never return them as rows:",
-    "  - the header row itself (השם / א / ב / ג),",
+    "  - the header row itself (השם / א / ב / ג ...),",
     '  - any boilerplate text: בס"ד, רישום נוכחות, פרשת ..., תשפ"...',
     "",
-    "Only return rows you can actually read. Do NOT invent, guess, or complete names you cannot see clearly.",
-    "If a strip contains no readable student rows, return an empty rows array.",
+    "Only return rows whose NAME you can actually read. Do NOT invent, guess, or complete names you cannot see clearly.",
+    "If the image contains no readable student rows, return an empty rows array.",
   ].join("\n");
 }
 

@@ -370,7 +370,7 @@ const TILE_FILTER = "grayscale(1) contrast(1.55) brightness(1.03)";
 /** כמה פסים לשלוח במקביל ל-Edge Function. */
 const STRIP_CONCURRENCY = 3;
 /** סף התאמת-שם מינימלי (מתחתיו הזיהוי נזרק, הבחור נשאר "נעדר"). */
-const NAME_MATCH_THRESHOLD = 0.6;
+const NAME_MATCH_THRESHOLD = 0.5;
 
 const MARK_TO_STATUS: Record<string, AttendanceStatus | null> = {
   a: "on_time",
@@ -616,6 +616,9 @@ function normalizeNameKey(raw: string): string {
     .normalize("NFC")
     .replace(/[֑-ׇ]/g, "") // ניקוד/טעמים
     .replace(/[׳״'"`´‘’“”]/g, "") // גרש/גרשיים/מרכאות → מוסרים
+    // הסרת כל מה שאינו אות עברית או רווח — ספרות, לועזית, סוגריים, קווים,
+    // ורעש-טבלה שהמודל עלול להדביק לשם.
+    .replace(/[^א-ת ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
