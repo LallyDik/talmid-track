@@ -347,6 +347,8 @@ const COLUMN_OVERLAP = 0.04;
 const RASTER_SCALE = 3;
 /** חפיפה אנכית בין רצועות-שורות, כדי ששורה לא תיחתך באמצע. */
 const ROW_BAND_OVERLAP = 0.03;
+/** חידוד ניגודיות + גווני-אפור כדי שסימוני-יד דהויים יבלטו מול הרקע הלבן. */
+const TILE_FILTER = "grayscale(1) contrast(1.55) brightness(1.03)";
 /** כמה פסים לשלוח במקביל ל-Edge Function. */
 const STRIP_CONCURRENCY = 3;
 /** סף התאמת-שם מינימלי (מתחתיו הזיהוי נזרק, הבחור נשאר "נעדר"). */
@@ -448,6 +450,8 @@ function splitCanvasToStrips(
       tile.height = sh;
       const ctx = tile.getContext("2d");
       if (!ctx) continue;
+      // חידוד ניגודיות כדי שסימונים דהויים יבלטו לפני שליחה למודל.
+      ctx.filter = TILE_FILTER;
       ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
       out.push(tile.toDataURL("image/png"));
     }
