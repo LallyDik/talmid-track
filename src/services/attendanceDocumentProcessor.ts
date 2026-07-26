@@ -7,7 +7,7 @@
  * `attendanceDocumentProcessor`. אפשר להחליף את המימוש (MOCK → OCR/AI אמיתי) בלי
  * לגעת באף מסך. בחירת המימוש נעשית לפי משתנה סביבה בזמן build:
  *
- *   VITE_ATTENDANCE_PROCESSOR_MODE = "mock" (ברירת מחדל) | "http" | "anthropic"
+ *   VITE_ATTENDANCE_PROCESSOR_MODE = "mock" (ברירת מחדל) | "http" | "anthropic" | "tesseract"
  *   VITE_ATTENDANCE_OCR_ENDPOINT   = כתובת שירות ה-OCR/AI (נדרש כאשר MODE=http)
  *
  * מצבים:
@@ -20,6 +20,16 @@
  *        1) פריסת הפונקציה supabase/functions/detect-attendance (Lovable פורס אוטומטית).
  *        2) הגדרת הסוד ANTHROPIC_API_KEY ב-Supabase/Lovable.
  *        3) (אופציונלי) ATTENDANCE_VISION_MODEL לבחירת מודל (ברירת מחדל claude-opus-4-8).
+ *   • "tesseract" / "ocr" — TesseractOcrProcessor: OCR חינמי 100% בצד-הלקוח מבוסס
+ *     Tesseract.js (מנוע Tesseract בעברית, "heb"). נבנה כדי לבדוק אם מנוע-OCR ייעודי
+ *     קורא את *השמות המודפסים* טוב יותר מ-Claude Vision. הזרימה: רסטריזציה של הקובץ
+ *     לתמונות-עמודות בגובה מלא (ללא חיתוך לרצועות-שורות — Tesseract קורא בלוק רב-שורות
+ *     בעצמו), הרצת OCR על כל עמודה, חילוץ טקסט + bounding-box לכל שורה, התאמת כל שורה
+ *     לרשימת הבחורים, וזיהוי-סימון היוריסטי לפי כהות-פיקסלים באזור התאים משמאל לשם.
+ *     אין קריאה לשום API בתשלום. הערת רשת (NetFree): קובץ נתוני-השפה העברית
+ *     (heb.traineddata) וליבת ה-WASM נטענים כברירת מחדל מ-CDN (jsdelivr) בזמן ריצה;
+ *     אם ה-CDN חסום יש להצביע על עותק מקומי דרך VITE_TESSERACT_LANG_PATH /
+ *     VITE_TESSERACT_CORE_PATH. קובץ ה-worker נטען מקומית מתוך החבילה (ללא CDN).
  *
  * המימוש MockProcessor הוא דטרמיניסטי-למחצה: אותו קובץ + אותו בחור מחזירים תמיד את
  * אותה תוצאה, כך שבדיקות והדגמות יציבות. הוא מחזיר גם מטא-דאטה של מיקום (bounding box)
@@ -526,14 +536,19 @@ function splitCanvasToStrips(
   return out;
 }
 
-/** רסטריזציה של PDF לתמונות-עמודות (אותה הגדרת pdfjs כמו studentListParser). */
-async function rasterizePdf(bytes: Uint8Array): Promise<PageStrips[]> {
+/** טוען את pdfjs (עם worker) ומחזיר מסמך PDF פתוח. משותף למסלול-האריחים (Vision)
+ *  ולמסלול-העמודות (Tesseract) כדי לא לשכפל את הגדרת ה-worker. */
+async function loadPdfDocument(bytes: Uint8Array) {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = (
     await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
   ).default;
+  return pdfjs.getDocument({ data: bytes }).promise;
+}
 
-  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+/** רסטריזציה של PDF לתמונות-עמודות (אותה הגדרת pdfjs כמו studentListParser). */
+async function rasterizePdf(bytes: Uint8Array): Promise<PageStrips[]> {
+  const pdf = await loadPdfDocument(bytes);
   const pages: PageStrips[] = [];
   try {
     for (let p = 1; p <= pdf.numPages; p++) {
@@ -882,11 +897,418 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
   }
 }
 
+/* -------------------------------------------------------------------------- *
+ * TesseractOcrProcessor — OCR חינמי 100% בצד-הלקוח (Tesseract.js, עברית "heb").
+ *
+ * שונה מ-AnthropicVisionProcessor: אין קריאת API בתשלום ואין חיתוך לרצועות-שורות.
+ * במקום זאת מרסטרים כל עמוד לקנבסי-עמודות בגובה-מלא, מריצים OCR עברי על כל עמודה
+ * (Tesseract קורא בלוק רב-שורות בעצמו), מתאימים כל שורה שזוהתה לרשימת הבחורים,
+ * ומזהים את הסימון היוריסטית לפי כהות-פיקסלים באזור התאים משמאל לשם (RTL).
+ * -------------------------------------------------------------------------- */
+
+/** עמוד לאחר רסטריזציה: קנבסי-עמודות בגובה-מלא (ללא חיתוך רצועות-שורות). */
+interface PageColumns {
+  page: number;
+  columns: HTMLCanvasElement[];
+}
+
+/**
+ * חותך עמוד שלם לקנבסי-עמודות אנכיים בגובה-מלא — זהה ללולאת-העמודות של
+ * splitCanvasToStrips אך *ללא* חיתוך אופקי לרצועות-שורות. שומר את קנבס-העמודה
+ * השלם כי אותם פיקסלים משמשים גם ל-OCR וגם למדידת-כהות של הסימונים.
+ */
+function splitCanvasToColumns(
+  source: HTMLCanvasElement,
+  columns: number,
+  overlap: number,
+): HTMLCanvasElement[] {
+  const cols = Math.max(1, columns);
+  const stripW = source.width / cols;
+  const padX = cols > 1 ? stripW * overlap : 0;
+  const out: HTMLCanvasElement[] = [];
+  for (let i = 0; i < cols; i++) {
+    const sx = Math.max(0, Math.floor(i * stripW - padX));
+    const sxEnd = Math.min(source.width, Math.ceil((i + 1) * stripW + padX));
+    const sw = sxEnd - sx;
+    if (sw <= 0) continue;
+    const col = document.createElement("canvas");
+    col.width = sw;
+    col.height = source.height;
+    const cctx = col.getContext("2d", { willReadFrequently: true });
+    if (!cctx) continue;
+    cctx.imageSmoothingEnabled = true;
+    cctx.imageSmoothingQuality = "high";
+    // ציור נקי (ללא TILE_FILTER בכוונה): אותו קנבס משמש גם למדידת-כהות הסימון,
+    // ולכן חובה לשמר ערכי-פיקסל אמיתיים (Tesseract מבצע בינריזציה בעצמו).
+    cctx.drawImage(source, sx, 0, sw, source.height, 0, 0, sw, source.height);
+    out.push(col);
+  }
+  return out;
+}
+
+/** רסטריזציה של PDF לקנבסי-עמודות בגובה-מלא (אותה הגדרת pdfjs כמו מסלול-האריחים). */
+async function rasterizePdfToColumns(bytes: Uint8Array): Promise<PageColumns[]> {
+  const pdf = await loadPdfDocument(bytes);
+  const pages: PageColumns[] = [];
+  try {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: RASTER_SCALE });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const cols = chooseColumnCount(canvas.width, canvas.height);
+      pages.push({ page: p, columns: splitCanvasToColumns(canvas, cols, COLUMN_OVERLAP) });
+    }
+  } finally {
+    await pdf.cleanup().catch(() => {});
+    await pdf.destroy().catch(() => {});
+  }
+  return pages;
+}
+
+/** רסטריזציה של תמונה בודדת לקנבסי-עמודות בגובה-מלא. */
+async function rasterizeImageToColumns(blob: Blob): Promise<PageColumns[]> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImage(url);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("יצירת קנבס לעיבוד התמונה נכשלה.");
+    ctx.drawImage(img, 0, 0);
+    const cols = chooseColumnCount(canvas.width, canvas.height);
+    return [{ page: 1, columns: splitCanvasToColumns(canvas, cols, COLUMN_OVERLAP) }];
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/* ── טיפוסי-משנה מינימליים לתוצאת Tesseract (מנותקים מהחבילה, כדי לא לתלות ב-SSR) ── */
+interface OcrBbox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+interface OcrLine {
+  text?: string;
+  confidence?: number;
+  bbox?: OcrBbox;
+  words?: { bbox?: OcrBbox }[];
+}
+interface OcrPage {
+  text?: string;
+  confidence?: number;
+  blocks?: { paragraphs?: { lines?: OcrLine[] }[] }[] | null;
+}
+interface TesseractWorker {
+  setParameters(params: Record<string, unknown>): Promise<unknown>;
+  recognize(
+    image: HTMLCanvasElement,
+    options?: Record<string, unknown>,
+    output?: Record<string, unknown>,
+  ): Promise<{ data: OcrPage }>;
+  terminate(): Promise<unknown>;
+}
+interface TesseractModule {
+  createWorker(
+    langs?: string,
+    oem?: number,
+    options?: Record<string, unknown>,
+  ): Promise<TesseractWorker>;
+}
+
+/** שורת-OCR מנורמלת: טקסט + גבולות-y בתוך קנבס-העמודה (משמש לזיהוי-הסימון). */
+interface OcrRow {
+  text: string;
+  y0: number;
+  y1: number;
+  confidence: number;
+}
+
+/**
+ * מחלץ שורות-טקסט + גבולות-y מתוצאת Tesseract. מעדיף את מבנה ה-blocks
+ * (blocks→paragraphs→lines→bbox); אם אינו זמין — נופל לחלוקת data.text לשורות
+ * עם גבולות-y מוערכים בחלוקה שווה על-פני גובה הקנבס (מאפשר זיהוי-סימון גס).
+ */
+function extractOcrRows(page: OcrPage, canvasHeight: number): OcrRow[] {
+  const rows: OcrRow[] = [];
+  const blocks = page?.blocks;
+  if (Array.isArray(blocks)) {
+    for (const b of blocks) {
+      for (const p of b?.paragraphs ?? []) {
+        for (const ln of p?.lines ?? []) {
+          const text = (ln?.text ?? "").trim();
+          if (!text) continue;
+          const bb = ln?.bbox ?? ln?.words?.[0]?.bbox;
+          rows.push({
+            text,
+            y0: bb ? bb.y0 : 0,
+            y1: bb ? bb.y1 : canvasHeight,
+            confidence: typeof ln?.confidence === "number" ? ln.confidence : 50,
+          });
+        }
+      }
+    }
+  }
+  if (rows.length === 0 && page?.text) {
+    // גיבוי (אין bbox): מחלקים את הטקסט לשורות עם גבולות-y שווים.
+    const lines = page.text
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const band = lines.length > 0 ? canvasHeight / lines.length : canvasHeight;
+    lines.forEach((text, i) => {
+      rows.push({ text, y0: i * band, y1: (i + 1) * band, confidence: 40 });
+    });
+  }
+  return rows;
+}
+
+/** רוחב יחסי של אזור-הסימונים (השמאלי — ב-RTL הסימונים משמאל לשם). */
+const MARK_REGION_FRAC = 0.42;
+/** כהות מינימלית (0..255) של התא הכהה מעל תא-הבסיס הבהיר כדי להיחשב "מסומן". */
+const MARK_MIN_DARKNESS = 12;
+/** פער-כהות מינימלי בין התא הכהה ביותר לשני-בכהותו (מונע זיהוי-כפול/רעש). */
+const MARK_SEPARATION = 7;
+/** בסיס-ודאות לזיהוי מבוסס-OCR (משולב עם ודאות ההתאמה וה-OCR). */
+const TESSERACT_BASE_CONFIDENCE = 0.6;
+
+/**
+ * זיהוי-סימון היוריסטי מבוסס כהות-פיקסלים, best-effort — *לעולם לא זורק*.
+ * מסתכל על החלק השמאלי של השורה (ב-RTL הסימונים משמאל לשם), מחלק אותו אופקית
+ * ל-|MARK_COLUMNS| תאים ומחשב כהות ממוצעת בכל תא. אם *בדיוק* תא אחד כהה בבירור
+ * מעל התא הבהיר ביותר (רקע ריק) וגם מעל השני-בכהותו — ממפים דרך MARK_TO_STATUS
+ * (index 0→a, 1→b, 2→c). אחרת null ⇒ הבחור יסומן "נעדר" ב-resolveRoster.
+ * הערה: המיפוי מניח סדר-תאים a,b,c משמאל-לימין; אם עמודות-הסימון בדף הפוכות יש
+ * להחליף את הכיוון של maxIdx.
+ */
+function detectRowMark(
+  canvas: HTMLCanvasElement,
+  y0: number,
+  y1: number,
+): AttendanceStatus | null {
+  try {
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    const W = canvas.width;
+    const H = canvas.height;
+    const top = Math.max(0, Math.min(H - 1, Math.floor(y0)));
+    const bottom = Math.max(top + 1, Math.min(H, Math.ceil(y1)));
+    const bandH = bottom - top;
+    const cells = MARK_COLUMNS.length;
+    const regionW = Math.floor(W * MARK_REGION_FRAC);
+    if (bandH < 4 || regionW < cells * 2) return null;
+    const cellW = Math.floor(regionW / cells);
+    if (cellW < 1) return null;
+
+    const darkness: number[] = [];
+    for (let c = 0; c < cells; c++) {
+      const cx = c * cellW;
+      const data = ctx.getImageData(cx, top, cellW, bandH).data;
+      let sum = 0;
+      for (let o = 0; o < data.length; o += 4) {
+        sum += 255 - (data[o] + data[o + 1] + data[o + 2]) / 3; // 0=לבן, 255=שחור
+      }
+      darkness.push(sum / (cellW * bandH));
+    }
+
+    let maxIdx = 0;
+    for (let c = 1; c < cells; c++) if (darkness[c] > darkness[maxIdx]) maxIdx = c;
+    const sorted = [...darkness].sort((a, b) => a - b);
+    const baseline = sorted[0]; // התא הבהיר ביותר ≈ רקע ריק
+    const runnerUp = sorted[sorted.length - 2];
+    const max = sorted[sorted.length - 1];
+    // חייב להיות כהה מספיק מעל הרקע, וגם לבלוט מעל שאר התאים.
+    if (max < baseline + MARK_MIN_DARKNESS) return null;
+    if (max < runnerUp + MARK_SEPARATION) return null;
+    const key = ["a", "b", "c"][maxIdx];
+    return MARK_TO_STATUS[key] ?? null;
+  } catch {
+    return null; // זיהוי-סימון לעולם לא מפיל את כל התהליך
+  }
+}
+
+class TesseractOcrProcessor implements AttendanceDocumentProcessor {
+  async process({
+    fileUrl,
+    fileName,
+    file,
+    students,
+    context: _context,
+  }: ProcessorInput): Promise<ProcessorOutput> {
+    // 1) Tesseract.js רץ רק בדפדפן (WebAssembly + Canvas).
+    if (typeof window === "undefined") {
+      throw new Error("זיהוי הנוכחות (Tesseract) זמין רק בדפדפן.");
+    }
+    if (!file && !fileUrl) {
+      throw new Error(
+        "לא צורף קובץ סרוק לזיהוי. יש להעלות תמונה או PDF של דף רישום הנוכחות.",
+      );
+    }
+
+    // 2) קבלת בייטים: עדיפות לקובץ שכבר בזיכרון, אחרת הורדה מ-Storage.
+    let blob: Blob;
+    if (file) {
+      blob = file;
+    } else {
+      const { data, error: dlErr } = await supabase.storage
+        .from("attendance-reports")
+        .download(fileUrl);
+      if (dlErr || !data) {
+        throw new Error(
+          `הורדת הקובץ הסרוק נכשלה: ${dlErr?.message ?? "הקובץ לא נמצא ב-Storage"}.`,
+        );
+      }
+      blob = data;
+    }
+
+    // 3) רסטריזציה לקנבסי-עמודות בגובה-מלא (ללא חיתוך רצועות-שורות).
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let pages: PageColumns[];
+    try {
+      pages = isPdfFile(fileName, blob.type)
+        ? await rasterizePdfToColumns(bytes)
+        : await rasterizeImageToColumns(blob);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`עיבוד הקובץ הסרוק נכשל: ${msg}`);
+    }
+
+    const columns: { page: number; column: number; canvas: HTMLCanvasElement }[] = [];
+    pages.forEach((pg) =>
+      pg.columns.forEach((canvas, ci) =>
+        columns.push({ page: pg.page, column: ci + 1, canvas }),
+      ),
+    );
+    if (columns.length === 0) {
+      throw new Error(
+        "לא הצלחנו להפיק תמונות עמודות מהקובץ. ודאו שהקובץ הוא סריקה תקינה (PDF או תמונה).",
+      );
+    }
+
+    // 4) טעינת Tesseract (dynamic import — client-only, לא שובר SSR) והרצת OCR
+    //    עברי על כל קנבס-עמודה. משתמשים ב-worker כדי לקבל blocks עם bbox לכל
+    //    שורה (Tesseract.recognize ברמת-העל מפיק טקסט בלבד ללא bbox ב-v7), עם
+    //    langPath/corePath אופציונליים כדי לצמצם תלות ב-CDN (למשל ברשת מסוננת).
+    const langPath = import.meta.env.VITE_TESSERACT_LANG_PATH as string | undefined;
+    const corePath = import.meta.env.VITE_TESSERACT_CORE_PATH as string | undefined;
+    const workerOptions: Record<string, unknown> = {};
+    if (langPath) workerOptions.langPath = langPath;
+    if (corePath) workerOptions.corePath = corePath;
+
+    const mod = await import("tesseract.js");
+    const Tesseract = ((mod as unknown as { default?: unknown }).default ??
+      mod) as unknown as TesseractModule;
+
+    const index = buildStudentIndex(students);
+    const byStudent = new Map<string, DetectionResult>();
+    const unmatched: string[] = [];
+    const ocrSamples: string[] = [];
+    let detectedRows = 0;
+
+    const worker = await Tesseract.createWorker("heb", 1, workerOptions);
+    try {
+      // PSM=6 (SINGLE_BLOCK): עמודה = בלוק שורות אחיד — קריאה יציבה של שמות.
+      await worker.setParameters({ tessedit_pageseg_mode: "6" }).catch(() => {});
+
+      for (const col of columns) {
+        let page: OcrPage;
+        try {
+          // output={blocks:true} → מקבלים bbox לכל שורה (חיוני לזיהוי-הסימון).
+          const res = await worker.recognize(col.canvas, {}, { blocks: true });
+          page = res.data;
+        } catch {
+          continue; // כשל OCR בעמודה בודדת — ממשיכים לשאר.
+        }
+
+        const rows = extractOcrRows(page, col.canvas.height);
+        for (const row of rows) {
+          detectedRows++;
+          if (ocrSamples.length < 6) ocrSamples.push(row.text);
+
+          // 5) התאמת השורה לבחור.
+          const match = matchStudent(row.text, index);
+          if (!match) {
+            if (unmatched.length < 40) unmatched.push(row.text);
+            continue;
+          }
+
+          // 6) זיהוי-סימון; ללא סימון ברור מדלגים ⇒ "נעדר" ב-resolveRoster.
+          const status = detectRowMark(col.canvas, row.y0, row.y1);
+          if (!status) continue;
+
+          // 7) ודאות: בסיס 0.6, משולב עם ודאות-ההתאמה וודאות-ה-OCR (0..100).
+          const ocrNorm = clamp01((row.confidence || 0) / 100);
+          const conf = Number(
+            (
+              TESSERACT_BASE_CONFIDENCE +
+              (1 - TESSERACT_BASE_CONFIDENCE) * match.matchConf * ocrNorm
+            ).toFixed(3),
+          );
+          const prev = byStudent.get(match.student.id);
+          if (!prev || conf > prev.detection_confidence) {
+            byStudent.set(match.student.id, {
+              student_id: match.student.id,
+              attendance_status: status,
+              detection_confidence: conf,
+            });
+          }
+        }
+      }
+    } finally {
+      await worker.terminate().catch(() => {});
+    }
+
+    const results = Array.from(byStudent.values());
+
+    // אין להחזיר ריק בשקט — שגיאה ברורה עם דוגמאות משני הצדדים (כמו Vision).
+    if (results.length === 0) {
+      if (detectedRows === 0) {
+        throw new Error(
+          "לא זוהה טקסט בקובץ. ודאו שהסריקה ברורה ומכילה דף רישום נוכחות (Tesseract/עברית).",
+        );
+      }
+      const sampleDetected = ocrSamples.slice(0, 4).filter(Boolean).join(" | ");
+      const sampleRoster = students
+        .slice(0, 4)
+        .map((s) => s.full_name)
+        .join(" | ");
+      throw new Error(
+        `זוהו ${detectedRows} שורות ב-OCR אך אף שם לא הותאם לרשימת הבחורים. ` +
+          `זוהו בדף: [${sampleDetected || "—"}] · ברשימה: [${sampleRoster || "—"}]`,
+      );
+    }
+
+    return {
+      results,
+      raw: {
+        engine: "tesseract-ocr",
+        detected_rows: detectedRows,
+        matched: results.length,
+        unmatched_names: unmatched,
+        page_count: pages.length,
+        column_count: columns.length,
+        mark_columns: MARK_COLUMNS,
+        lang_path: langPath ?? null,
+        core_path: corePath ?? null,
+        processed_at: new Date().toISOString(),
+      },
+    };
+  }
+}
+
 const MODE = (import.meta.env.VITE_ATTENDANCE_PROCESSOR_MODE ?? "mock") as string;
 
 function selectProcessor(mode: string): AttendanceDocumentProcessor {
   if (mode === "anthropic" || mode === "vision") return new AnthropicVisionProcessor();
   if (mode === "http" || mode === "real") return new HttpProcessor();
+  if (mode === "tesseract" || mode === "ocr") return new TesseractOcrProcessor();
   return new MockProcessor();
 }
 
