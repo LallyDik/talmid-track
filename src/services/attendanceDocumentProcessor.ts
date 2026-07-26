@@ -355,6 +355,14 @@ const DEFAULT_COLUMN_COUNT =
 const COLUMN_OVERLAP = 0.04;
 /** קנה-מידה לרסטריזציה של PDF (‎~2x לחדות סבירה בכתב-יד). */
 const RASTER_SCALE = 5;
+/**
+ * רוחב-היעד (בפיקסלים) של הדף המרונדר. סריקות רבות מגדירות דף "קטן" בנקודות,
+ * כך ש-scale קבוע (RASTER_SCALE) מייצר רזולוציה נמוכה ומטשטש סריקה איכותית.
+ * אנו מחשבים את ה-scale לפי רוחב-היעד הזה כדי להבטיח רזולוציה גבוהה בכל מקרה.
+ */
+const TARGET_RENDER_WIDTH = 5000;
+/** תקרת scale למניעת קנבס ענק (זיכרון). */
+const MAX_RENDER_SCALE = 14;
 /** חפיפה אנכית בין רצועות-שורות, כדי ששורה לא תיחתך באמצע. */
 const ROW_BAND_OVERLAP = 0.03;
 /** חידוד ניגודיות + גווני-אפור כדי שסימוני-יד דהויים יבלטו מול הרקע הלבן. */
@@ -553,7 +561,12 @@ async function rasterizePdf(bytes: Uint8Array): Promise<PageStrips[]> {
   try {
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
-      const viewport = page.getViewport({ scale: RASTER_SCALE });
+      const _base = page.getViewport({ scale: 1 });
+      const _scale = Math.min(
+        MAX_RENDER_SCALE,
+        Math.max(RASTER_SCALE, TARGET_RENDER_WIDTH / _base.width),
+      );
+      const viewport = page.getViewport({ scale: _scale });
       const canvas = document.createElement("canvas");
       canvas.width = Math.ceil(viewport.width);
       canvas.height = Math.ceil(viewport.height);
@@ -953,7 +966,12 @@ async function rasterizePdfToColumns(bytes: Uint8Array): Promise<PageColumns[]> 
   try {
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
-      const viewport = page.getViewport({ scale: RASTER_SCALE });
+      const _base = page.getViewport({ scale: 1 });
+      const _scale = Math.min(
+        MAX_RENDER_SCALE,
+        Math.max(RASTER_SCALE, TARGET_RENDER_WIDTH / _base.width),
+      );
+      const viewport = page.getViewport({ scale: _scale });
       const canvas = document.createElement("canvas");
       canvas.width = Math.ceil(viewport.width);
       canvas.height = Math.ceil(viewport.height);
