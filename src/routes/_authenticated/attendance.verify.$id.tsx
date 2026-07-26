@@ -137,15 +137,36 @@ function VerifyPage() {
     return m;
   }, [records]);
 
+  // סדר-הסריקה: מיפוי student_id → מיקומו על הדף (נבנה ב-processor, נשמר ב-raw).
+  const scanOrder = useMemo(() => {
+    const arr = (report?.ocr_raw_result as { detected_order?: string[] } | null)
+      ?.detected_order;
+    const m = new Map<string, number>();
+    if (Array.isArray(arr)) arr.forEach((sid, i) => m.has(sid) || m.set(sid, i));
+    return m;
+  }, [report?.ocr_raw_result]);
+
   const sortedRecords = useMemo(
     () =>
-      [...(records ?? [])].sort((a, b) =>
-        (a.students?.full_name ?? "").localeCompare(b.students?.full_name ?? "", "he"),
-      ),
-    [records],
+      [...(records ?? [])].sort((a, b) => {
+        // מי שזוהה בסריקה — לפי מיקומו על הדף; מי שלא זוהה — בסוף, לפי א״ב.
+        const ai = scanOrder.get(a.student_id);
+        const bi = scanOrder.get(b.student_id);
+        if (ai !== undefined && bi !== undefined) return ai - bi;
+        if (ai !== undefined) return -1;
+        if (bi !== undefined) return 1;
+        return (a.students?.full_name ?? "").localeCompare(
+          b.students?.full_name ?? "",
+          "he",
+        );
+      }),
+    [records, scanOrder],
   );
 
-  const rawResult = report?.ocr_raw_result as { page_count?: number } | null;
+  const rawResult = report?.ocr_raw_result as {
+    page_count?: number;
+    detected_order?: string[];
+  } | null;
   const pageCount = Math.max(1, Number(rawResult?.page_count ?? 1) || 1);
   const isPdf =
     /\.pdf$/i.test(report?.original_file_name ?? "") || /\.pdf$/i.test(report?.file_url ?? "");

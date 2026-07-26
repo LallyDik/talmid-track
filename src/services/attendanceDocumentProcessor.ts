@@ -489,7 +489,10 @@ function splitCanvasToStrips(
   const padX = cols > 1 ? stripW * overlap : 0;
   const out: string[] = [];
 
-  for (let i = 0; i < cols; i++) {
+  // סורקים מימין-לשמאל (i=cols-1 → 0): בדף עברי (RTL) קוראים את העמודה הימנית
+  // ראשונה, ולכן סדר-האריחים ב-out (וממנו מספר ה"עמודה"/tile-index) עוקב אחר
+  // סדר-הקריאה האמיתי של הדף. משמש למיון רשימת הבחורים במסך האימות לפי סדר-הסריקה.
+  for (let i = cols - 1; i >= 0; i--) {
     const sx = Math.max(0, Math.floor(i * stripW - padX));
     const sxEnd = Math.min(source.width, Math.ceil((i + 1) * stripW + padX));
     const sw = sxEnd - sx;
@@ -794,6 +797,7 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
       confidence: number;
       page: number;
       column: number;
+      rowIndex: number;
     }[] = [];
     const stripErrors: { id: string; error: string }[] = [];
     let fatal: string | null = null;
@@ -818,15 +822,16 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
           );
           const r = results?.[0];
           if (r?.error) stripErrors.push({ id: strip.id, error: r.error });
-          for (const row of r?.rows ?? []) {
+          (r?.rows ?? []).forEach((row, ri) => {
             detected.push({
               name: row.name,
               mark: row.mark,
               confidence: row.confidence,
               page: strip.page,
               column: strip.column,
+              rowIndex: ri,
             });
-          }
+          });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           fatal = fatal ?? msg;
@@ -868,6 +873,26 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
 
     const results = Array.from(byStudent.values());
 
+    // סדר-הסריקה: כל השורות שזוהו (כולל ללא-סימון), ממוינות לפי מיקומן על הדף
+    // (עמוד → אריח/עמודה → שורה בתוך האריח), וממופות לרשימת student_id ייחודית
+    // לפי סדר-ההופעה על הדף. משמש למיון רשימת הבחורים במסך האימות כך שתתאים
+    // לסדר הסריקה ולא לסדר-האלפבית.
+    const detected_order: string[] = [];
+    {
+      const seen = new Set<string>();
+      const ordered = [...detected].sort(
+        (a, b) =>
+          a.page - b.page || a.column - b.column || a.rowIndex - b.rowIndex,
+      );
+      for (const row of ordered) {
+        const m = matchStudent(row.name, index);
+        if (m && !seen.has(m.student.id)) {
+          seen.add(m.student.id);
+          detected_order.push(m.student.id);
+        }
+      }
+    }
+
     // אין להחזיר ריק בשקט — נצוף שגיאה ברורה כדי שמסך ההעלאה יראה מה קרה.
     if (results.length === 0) {
       if (fatal) throw new Error(fatal);
@@ -905,6 +930,7 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
         mark_columns: MARK_COLUMNS,
         detected_rows: detected.length,
         matched: results.length,
+        detected_order,
         unmatched_names: unmatched,
         strip_errors: stripErrors,
         processed_at: new Date().toISOString(),
