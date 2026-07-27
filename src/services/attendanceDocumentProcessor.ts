@@ -373,7 +373,7 @@ const MARK_COLUMNS = ["א", "ב", "ג"];
 const DEFAULT_COLUMN_COUNT =
   Number(import.meta.env.VITE_ATTENDANCE_PHYSICAL_COLUMNS) || 4;
 /** חפיפה אופקית בין פסים (כשבר מרוחב הפס) כדי לא לחתוך שם על הגבול. */
-const COLUMN_OVERLAP = 0.04;
+const COLUMN_OVERLAP = 0.06;
 /** קנה-מידה לרסטריזציה של PDF (‎~2x לחדות סבירה בכתב-יד). */
 const RASTER_SCALE = 5;
 /**
@@ -868,28 +868,64 @@ class AnthropicVisionProcessor implements AttendanceDocumentProcessor {
 
     // 4) התאמת שמות ל-student_id + 5) מיפוי סימון → סטטוס.
     const index = buildStudentIndex(students);
-    const byStudent = new Map<string, DetectionResult>();
+
+    // צובר את כל קריאות-הסימון לכל בחור מכל האריחים (כולל "none"), ואז מכריע
+    // בהצבעת-רוב לפי ודאות-המודל בלבד — לא לפי ודאות-התאמת-השם. שני שיפורים:
+    //   1) אריחים חופפים עלולים להחזיר סימונים סותרים לאותו בחור; הרוב מנצח
+    //      לפי איכות-קריאת-הסימון, לא לפי כמה טוב השם הותאם.
+    //   2) קריאת "none" נקייה יכולה לבטל סימון-שווא (למשל ג׳ מדומה מאריח חתוך) —
+    //      הזרימה כבר אינה חד-כיוונית שרק "מוסיפה" נוכחות.
+    // ודאות-ההתאמה (matchConf) נשמרת בנפרד ומשוקללת רק לתצוגת הוודאות.
+    const perStudent = new Map<
+      string,
+      { matchConf: number; votes: Map<string, { sum: number; count: number }> }
+    >();
     const unmatched: string[] = [];
 
     for (const row of detected) {
-      if (row.mark === "none") continue; // נעדר — resolveRoster יגדיר אותו
-      const status = MARK_TO_STATUS[row.mark];
-      if (!status) continue;
       const match = matchStudent(row.name, index);
       if (!match) {
-        unmatched.push(row.name);
+        if (row.mark !== "none") unmatched.push(row.name);
         continue;
       }
       const modelConf = clamp01(typeof row.confidence === "number" ? row.confidence : 0.5);
-      const conf = Number((modelConf * match.matchConf).toFixed(3));
-      const prev = byStudent.get(match.student.id);
-      if (!prev || conf > prev.detection_confidence) {
-        byStudent.set(match.student.id, {
-          student_id: match.student.id,
-          attendance_status: status,
-          detection_confidence: conf,
-        });
+      let t = perStudent.get(match.student.id);
+      if (!t) {
+        t = { matchConf: match.matchConf, votes: new Map() };
+        perStudent.set(match.student.id, t);
       }
+      t.matchConf = Math.max(t.matchConf, match.matchConf);
+      const v = t.votes.get(row.mark) ?? { sum: 0, count: 0 };
+      v.sum += modelConf;
+      v.count += 1;
+      t.votes.set(row.mark, v);
+    }
+
+    const byStudent = new Map<string, DetectionResult>();
+    for (const [sid, t] of perStudent) {
+      // הסימון המנצח = בעל סכום-ודאות-המודל הגבוה ביותר; בתיקו מעדיפים "none".
+      let bestMark = "none";
+      let bestSum = -1;
+      let totalSum = 0;
+      for (const [mark, v] of t.votes) {
+        totalSum += v.sum;
+        if (v.sum > bestSum || (v.sum === bestSum && mark === "none")) {
+          bestSum = v.sum;
+          bestMark = mark;
+        }
+      }
+      if (bestMark === "none") continue; // נעדר — resolveRoster יטפל
+      const status = MARK_TO_STATUS[bestMark];
+      if (!status) continue;
+      const best = t.votes.get(bestMark)!;
+      const avgModelConf = best.sum / best.count; // ודאות-המודל הממוצעת לסימון המנצח
+      const agreement = totalSum > 0 ? best.sum / totalSum : 1; // חלק-ההסכמה בין הקריאות
+      const conf = Number((clamp01(avgModelConf * agreement) * t.matchConf).toFixed(3));
+      byStudent.set(sid, {
+        student_id: sid,
+        attendance_status: status,
+        detection_confidence: conf,
+      });
     }
 
     const results = Array.from(byStudent.values());
