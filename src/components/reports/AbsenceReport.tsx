@@ -31,7 +31,7 @@ const rangeSchema = z
   .refine((v) => v.from <= v.to, { message: "תאריך ההתחלה חייב להיות לפני תאריך הסיום" });
 
 function shortDate(iso: string): string {
-  return formatHebrewDate(iso, { day: "numeric", month: "numeric" });
+  return formatHebrewDate(iso, { day: "numeric", month: "short" });
 }
 
 /**

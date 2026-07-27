@@ -534,10 +534,11 @@ export function useDashboardData(filters: DashboardFilters, yeshivaId?: string) 
 
 function fmtDayLabel(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
+  // לוח עברי (כ״ז תמוז) — עקבי עם שאר התאריכים באפליקציה.
+  return d.toLocaleDateString("he-IL-u-ca-hebrew", { day: "numeric", month: "short" });
 }
 
 function fmtMonthLabel(key: string): string {
   const d = new Date(`${key}-01T00:00:00`);
-  return d.toLocaleDateString("he-IL", { month: "long", year: "numeric" });
+  return d.toLocaleDateString("he-IL-u-ca-hebrew", { month: "long", year: "numeric" });
 }

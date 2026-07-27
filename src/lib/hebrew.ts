@@ -140,8 +140,35 @@ export const DEFAULT_TREATMENT_TYPES = [
 ] as const;
 
 /* ---------------------------------------------------------------- *
- * Date formatting (Hebrew, he-IL)
- * ---------------------------------------------------------------- */
+ * Date formatting — Hebrew (JEWISH) calendar
+ * ----------------------------------------------------------------
+ * כל התאריכים באפליקציה מוצגים בלוח העברי (כ״ז בתמוז תשפ״ו) ולא הלועזי.
+ * הלוקאל "he-IL-u-ca-hebrew" מפעיל את הלוח העברי דרך Intl (ICU) — ללא צורך
+ * בספריית-לוח חיצונית, ומחזיר שמות-חודשים וספרות עבריות (גימטריה) אוטומטית.
+ * הערה: לשדות קלט (<input type="date">) עדיין נדרש ISO לועזי — אין להשתמש שם.
+ */
+const HEBREW_CALENDAR_LOCALE = "he-IL-u-ca-hebrew";
+
+/* המרת מספר לגימטריה עם גרש/גרשיים — לימים (א׳..ל׳) ולשנים (תשפ״ו).
+ * Intl מחזיר את שם-החודש העברי הנכון (כולל אדר א׳/ב׳ בשנה מעוברת) אך את היום
+ * והשנה בספרות רגילות; כאן ממירים אותם לגימטריה כמקובל. שנים עבריות מוצגות
+ * ללא האלפים (5786 → תשפ״ו), בדיוק כפי שנכתב בדוחות הישיבה. */
+const GEMATRIA_HUNDREDS = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "תת", "תתק"];
+const GEMATRIA_TENS = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
+const GEMATRIA_ONES = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
+
+function toGematria(value: number): string {
+  const n = value > 1000 ? value % 1000 : value;
+  if (!Number.isFinite(n) || n <= 0) return String(value);
+  let s = GEMATRIA_HUNDREDS[Math.floor(n / 100)] ?? "";
+  const rem = n % 100;
+  if (rem === 15) s += "טו"; // ט״ו — לא יה (שם ה׳)
+  else if (rem === 16) s += "טז"; // ט״ז — לא יו
+  else s += (GEMATRIA_TENS[Math.floor(rem / 10)] ?? "") + (GEMATRIA_ONES[rem % 10] ?? "");
+  if (s.length <= 1) return s + "׳"; // גרש לאות בודדת
+  return s.slice(0, -1) + "״" + s.slice(-1); // גרשיים לפני האות האחרונה
+}
+
 export function formatHebrewDate(
   d: string | number | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions,
@@ -149,10 +176,16 @@ export function formatHebrewDate(
   if (d === null || d === undefined || d === "") return "";
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return "";
+  // Intl מפיק שם-חודש עברי נכון; אנו מחליפים יום ושנה בגימטריה (שעה/דקה נשארות).
   return new Intl.DateTimeFormat(
-    "he-IL",
+    HEBREW_CALENDAR_LOCALE,
     options ?? { day: "numeric", month: "long", year: "numeric" },
-  ).format(date);
+  )
+    .formatToParts(date)
+    .map((p) =>
+      p.type === "day" || p.type === "year" ? toGematria(Number(p.value)) : p.value,
+    )
+    .join("");
 }
 
 export function formatHebrewDateTime(

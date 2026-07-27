@@ -26,7 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { reportStatusLabels, formatHebrewDateTime, type ReportStatus } from "@/lib/hebrew";
+import {
+  reportStatusLabels,
+  formatHebrewDate,
+  formatHebrewDateTime,
+  type ReportStatus,
+} from "@/lib/hebrew";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -255,6 +260,9 @@ function ReportsPage() {
               value={dateFrom}
               onChange={(e) => withPageReset(setDateFrom)(e.target.value)}
             />
+            {dateFrom && (
+              <p className="text-[11px] text-muted-foreground">{formatHebrewDate(dateFrom)}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="date-to" className="text-xs text-muted-foreground">
@@ -266,6 +274,9 @@ function ReportsPage() {
               value={dateTo}
               onChange={(e) => withPageReset(setDateTo)(e.target.value)}
             />
+            {dateTo && (
+              <p className="text-[11px] text-muted-foreground">{formatHebrewDate(dateTo)}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">סדר לימוד</Label>

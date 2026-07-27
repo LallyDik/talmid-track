@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
 import { safeStorageKey } from "@/lib/utils";
+import { formatHebrewDate } from "@/lib/hebrew";
 import { toast } from "sonner";
 import { UploadCloud, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -258,6 +259,9 @@ function UploadPage() {
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
+                {date && (
+                  <p className="text-[11px] text-muted-foreground">{formatHebrewDate(date)}</p>
+                )}
                 {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
               </div>
 
