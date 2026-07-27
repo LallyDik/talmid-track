@@ -46,7 +46,6 @@ export function hebrewHoliday(date: Date): string | null {
       if (day >= 15 && day <= 21) return "פסח";
       break;
     case "אייר":
-      if (day === 5) return "יום העצמאות";
       if (day === 18) return "ל״ג בעומר";
       break;
     case "סיוון":
