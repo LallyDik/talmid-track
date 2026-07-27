@@ -123,14 +123,35 @@ export function resolveRoster(
   students: StudentInput[],
   detections: DetectionResult[],
   threshold: number = LOW_CONFIDENCE_THRESHOLD,
+  onSheetIds?: Iterable<string>,
 ): ResolvedRoster {
   const byId = new Map(detections.map((d) => [d.student_id, d]));
+  // onSheetIds = כל הבחורים שהופיעו פיזית בדף (detected_order), עם או בלי סימון.
+  // כשהוא סופק, מבחינים בין שלושה מצבים:
+  //   • זוהה עם סימון            → הסטטוס מהזיהוי.
+  //   • בדף אך ללא סימון         → "absent" (נעדר לפי הדף — מסומן לבדיקה).
+  //   • כלל לא בדף               → "unknown" (מצב ניטרלי — לא נספר, לא מסומן חסר).
+  // כשלא סופק (מנוע ישן/דף שמכסה את כולם) נשמרת ההתנהגות הישנה: לא-זוהה → "absent".
+  const onSheet = onSheetIds ? new Set(onSheetIds) : null;
   let undetectedCount = 0;
   let lowConfidenceCount = 0;
 
   const records: ResolvedRecord[] = students.map((s) => {
     const d = byId.get(s.id);
     if (!d) {
+      const notOnSheet = onSheet ? !onSheet.has(s.id) : false;
+      if (notOnSheet) {
+        // לא הופיע בדף כלל — ניטרלי, אינו נספר כדורש-בדיקה.
+        const rec: ResolvedRecord = {
+          student_id: s.id,
+          attendance_status: "unknown",
+          detection_confidence: null,
+          detected_automatically: false,
+          box: null,
+        };
+        return rec;
+      }
+      // הופיע בדף אך ללא סימון (או מנוע ישן) → נעדר, מסומן לבדיקה.
       undetectedCount++;
       const rec: ResolvedRecord = {
         student_id: s.id,

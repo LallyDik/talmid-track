@@ -142,8 +142,11 @@ function UploadPage() {
           },
         });
 
-        // BUG C: בחור ללא סימון → נעדר; רמת ודאות נמוכה → needs_review.
-        const resolved = resolveRoster(roster, results);
+        // בחור שכלל לא הופיע בדף → מצב ניטרלי; בדף-ללא-סימון → נעדר; ודאות נמוכה → לבדיקה.
+        const onSheetIds = Array.isArray((raw as { detected_order?: unknown }).detected_order)
+          ? ((raw as { detected_order: string[] }).detected_order)
+          : undefined;
+        const resolved = resolveRoster(roster, results, undefined, onSheetIds);
 
         // BUG A: נכתבות אך ורק רשומות טיוטה (is_draft=true). שום דבר לא נספר
         // כנוכחות סופית עד לחיצה על "אשר ועדכן נוכחות" במסך האימות.

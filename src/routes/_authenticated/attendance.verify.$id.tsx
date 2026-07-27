@@ -23,7 +23,6 @@ import { PageHeader } from "@/components/AppShell";
 import { EmptyState, TableSkeleton, ConfirmDialog } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -176,10 +175,13 @@ function VerifyPage() {
     edits[r.id]?.status ?? r.attendance_status;
   const noteVal = (r: RecordRow): string => edits[r.id]?.note ?? r.notes ?? "";
 
+  // רשומה "ניטרלית" (unknown — בחור שכלל לא הופיע בדף) אינה נחשבת "דורשת בדיקה":
+  // אחרת מאות בחורים שאינם קשורים לדף היו נצבעים כדגל אדום.
   const isLowConfidence = (r: RecordRow): boolean =>
-    !r.detected_automatically ||
-    r.detection_confidence == null ||
-    r.detection_confidence < LOW_CONFIDENCE_THRESHOLD;
+    current(r) !== "unknown" &&
+    (!r.detected_automatically ||
+      r.detection_confidence == null ||
+      r.detection_confidence < LOW_CONFIDENCE_THRESHOLD);
   const isFlagged = (r: RecordRow): boolean => isLowConfidence(r) && !reviewed.has(r.id);
 
   function setStatus(id: string, status: AttendanceStatus) {
@@ -545,6 +547,7 @@ function VerifyPage() {
                   visible.map((r) => {
                     const flagged = isFlagged(r);
                     const cur = current(r);
+                    const neutral = cur === "unknown"; // בחור שאינו בדף — מעומעם
                     const needsExcuseNote = cur === "excused" && !noteVal(r).trim();
                     return (
                       <div
@@ -552,6 +555,7 @@ function VerifyPage() {
                         className={cn(
                           GRID_COLS,
                           "border-b border-border/60 px-3 py-1.5 text-sm transition-colors",
+                          neutral && "opacity-55",
                         )}
                         style={
                           flagged
@@ -569,27 +573,31 @@ function VerifyPage() {
                           {r.students?.classes?.name ?? "—"}
                         </div>
 
-                        <RadioGroup
-                          className="contents"
-                          value={cur}
-                          onValueChange={(v) => setStatus(r.id, v as AttendanceStatus)}
-                        >
-                          {STATUS_COLS.map((s) => (
-                            <label
-                              key={s}
-                              style={{ ["--rc" as string]: statusVar[s] }}
-                              className="flex items-center justify-center py-0.5"
-                            >
-                              <RadioGroupItem value={s} className="peer sr-only" />
-                              <span
-                                aria-hidden
-                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground transition-colors hover:border-[color:var(--rc)] peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-data-[state=checked]:border-transparent peer-data-[state=checked]:text-white peer-data-[state=checked]:[background-color:var(--rc)]"
+                        {/* כפתורי-בחירה רגילים (type=button) במקום RadioGroup: מונע את
+                            "קפיצת העמוד" שנגרמה מהעברת-פוקוס של Radix לרדיו נסתר (sr-only). */}
+                        {STATUS_COLS.map((s) => {
+                          const active = cur === s;
+                          return (
+                            <div key={s} className="flex items-center justify-center py-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setStatus(r.id, s)}
+                                aria-pressed={active}
+                                aria-label={attendanceLabels[s]}
+                                title={attendanceLabels[s]}
+                                style={{ ["--rc" as string]: statusVar[s] }}
+                                className={cn(
+                                  "flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors hover:border-[color:var(--rc)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                  active
+                                    ? "border-transparent text-white [background-color:var(--rc)]"
+                                    : "border-border text-muted-foreground",
+                                )}
                               >
                                 {attendanceShort[s]}
-                              </span>
-                            </label>
-                          ))}
-                        </RadioGroup>
+                              </button>
+                            </div>
+                          );
+                        })}
 
                         <div
                           className={cn(
