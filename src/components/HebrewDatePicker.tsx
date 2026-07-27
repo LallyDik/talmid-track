@@ -9,6 +9,7 @@ import {
   hebrewMonthDays,
   hebrewDayOfMonth,
   addHebrewMonths,
+  hebrewHoliday,
 } from "@/lib/hebrewCalendar";
 
 /* בורר-תאריך בלוח העברי: גריד של חודש עברי אמיתי (ניווט חודש-עברי אחד בכל פעם),
@@ -90,20 +91,8 @@ export function HebrewDatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3" align="start" dir="rtl">
-        {/* כותרת החודש + ניווט (ChevronRight=קודם, ChevronLeft=הבא — כיוון עברי) */}
+        {/* כותרת החודש + ניווט. בכיוון עברי: החץ הימני (▶) = חודש קודם, השמאלי (◀) = הבא. */}
         <div className="mb-2 flex items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="החודש הבא"
-            onClick={() => setViewMonth((m) => addHebrewMonths(m, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="min-w-32 text-center text-sm font-medium">
-            {formatHebrewDate(viewMonth, { month: "long", year: "numeric" })}
-          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -113,11 +102,29 @@ export function HebrewDatePicker({
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+          <div className="min-w-32 text-center text-sm font-medium">
+            {formatHebrewDate(viewMonth, { month: "long", year: "numeric" })}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="החודש הבא"
+            onClick={() => setViewMonth((m) => addHebrewMonths(m, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="grid grid-cols-7 gap-0.5 text-center">
-          {WEEKDAYS.map((w) => (
-            <div key={w} className="py-1 text-[0.7rem] font-normal text-muted-foreground">
+          {WEEKDAYS.map((w, i) => (
+            <div
+              key={w}
+              className={cn(
+                "py-1 text-[0.7rem] font-normal text-muted-foreground",
+                i === 6 && "font-semibold text-foreground", // שבת
+              )}
+            >
               {w}
             </div>
           ))}
@@ -128,22 +135,40 @@ export function HebrewDatePicker({
             const iso = dateToIso(d);
             const isSel = iso === selIso;
             const isToday = iso === todayIso;
+            const isShabbat = d.getDay() === 6;
+            const holiday = hebrewHoliday(d);
             return (
               <button
                 key={iso}
                 type="button"
                 onClick={() => pick(d)}
                 aria-pressed={isSel}
+                title={holiday ?? undefined}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  isToday && !isSel && "bg-accent/60 font-semibold",
+                  "relative flex h-9 w-8 flex-col items-center justify-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isShabbat && !isSel && "bg-accent/60", // שבת מודגשת
+                  isToday && !isSel && "font-semibold ring-1 ring-primary/50",
                   isSel && "bg-primary text-primary-foreground hover:bg-primary",
                 )}
               >
-                {toGematria(hebrewDayOfMonth(d))}
+                <span className="leading-none">{toGematria(hebrewDayOfMonth(d))}</span>
+                {holiday && (
+                  <span
+                    className={cn(
+                      "h-1 w-1 rounded-full",
+                      isSel ? "bg-primary-foreground" : "bg-[color:var(--status-late-b)]",
+                    )}
+                  />
+                )}
               </button>
             );
           })}
+        </div>
+
+        {/* מקרא: חג/מועד מסומן בנקודה */}
+        <div className="mt-2 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-late-b)]" />
+          חג / מועד
         </div>
 
         <div className="mt-2 flex justify-start">
