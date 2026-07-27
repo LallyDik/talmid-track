@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
 import { safeStorageKey } from "@/lib/utils";
-import { formatHebrewDate } from "@/lib/hebrew";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { toast } from "sonner";
 import { UploadCloud, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -253,15 +253,7 @@ function UploadPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="report-date">תאריך הדוח</Label>
-                <Input
-                  id="report-date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                {date && (
-                  <p className="text-[11px] text-muted-foreground">{formatHebrewDate(date)}</p>
-                )}
+                <HebrewDatePicker id="report-date" value={date} onChange={setDate} />
                 {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
               </div>
 

@@ -157,7 +157,7 @@ const GEMATRIA_HUNDREDS = ["", "ק", "ר", "ש", "ת", "תק", "תר", "תש", "
 const GEMATRIA_TENS = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
 const GEMATRIA_ONES = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
 
-function toGematria(value: number): string {
+export function toGematria(value: number): string {
   const n = value > 1000 ? value % 1000 : value;
   if (!Number.isFinite(n) || n <= 0) return String(value);
   let s = GEMATRIA_HUNDREDS[Math.floor(n / 100)] ?? "";
