@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DataTable, EmptyState, StatusBadge, type Column } from "@/components/kit";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { formatHebrewDate } from "@/lib/hebrew";
 import { AttendanceCalendar } from "./AttendanceCalendar";
 import {
@@ -108,19 +109,19 @@ export function AttendanceTab({
           <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
             <div className="space-y-1">
               <Label className="text-xs">מתאריך</Label>
-              <Input
-                type="date"
+              <HebrewDatePicker
                 value={from}
-                onChange={(e) => setFrom(e.target.value)}
+                max={to || undefined}
+                onChange={setFrom}
                 className="w-40"
               />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">עד תאריך</Label>
-              <Input
-                type="date"
+              <HebrewDatePicker
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                min={from || undefined}
+                onChange={setTo}
                 className="w-40"
               />
             </div>

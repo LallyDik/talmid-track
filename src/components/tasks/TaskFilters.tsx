@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -142,18 +142,18 @@ export function TaskFilters({
         </Field>
 
         <Field label="יעד מתאריך">
-          <Input
-            type="date"
+          <HebrewDatePicker
             value={value.dueFrom}
-            onChange={(e) => patch({ dueFrom: e.target.value })}
+            max={value.dueTo || undefined}
+            onChange={(iso) => patch({ dueFrom: iso })}
           />
         </Field>
 
         <Field label="יעד עד תאריך">
-          <Input
-            type="date"
+          <HebrewDatePicker
             value={value.dueTo}
-            onChange={(e) => patch({ dueTo: e.target.value })}
+            min={value.dueFrom || undefined}
+            onChange={(iso) => patch({ dueTo: iso })}
           />
         </Field>
       </div>

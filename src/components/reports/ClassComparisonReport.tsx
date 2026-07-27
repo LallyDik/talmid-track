@@ -5,6 +5,7 @@ import { GraduationCap, Users, TrendingUp, Clock, XCircle, AlertTriangle } from 
 
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import {
   Select,
   SelectContent,
@@ -300,10 +301,10 @@ export function ClassComparisonReport({ yeshivaId, yeshivaName }: ReportProps) {
           </Select>
         </Field>
         <Field label="מתאריך" htmlFor="class-from" className="min-w-[9rem]">
-          <Input id="class-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          <HebrewDatePicker id="class-from" value={from} max={to} onChange={setFrom} />
         </Field>
         <Field label="עד תאריך" htmlFor="class-to" className="min-w-[9rem]">
-          <Input id="class-to" type="date" value={to} max={todayISO()} onChange={(e) => setTo(e.target.value)} />
+          <HebrewDatePicker id="class-to" value={to} max={todayISO()} onChange={setTo} />
         </Field>
         <div className="ms-auto self-end">
           <ExportToolbar

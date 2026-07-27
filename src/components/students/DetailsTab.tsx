@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { studentStatusLabels } from "@/lib/hebrew";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -341,7 +342,7 @@ export function DetailsTab({ student }: { student: Student }) {
                 <FormItem>
                   <FormLabel>תאריך לידה</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <HebrewDatePicker value={field.value ?? ""} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -5,6 +5,7 @@ import { Clock, AlertTriangle } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { EmptyState, DataTable, type Column } from "@/components/kit";
 import { formatHebrewDate } from "@/lib/hebrew";
 import type { ReportDocument } from "@/services/reportExport";
@@ -172,10 +173,10 @@ export function LatenessReport({ yeshivaId, yeshivaName }: ReportProps) {
     <div className="space-y-5">
       <FilterBar>
         <Field label="מתאריך" htmlFor="late-from" className="min-w-[9rem]">
-          <Input id="late-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          <HebrewDatePicker id="late-from" value={from} max={to} onChange={setFrom} />
         </Field>
         <Field label="עד תאריך" htmlFor="late-to" className="min-w-[9rem]">
-          <Input id="late-to" type="date" value={to} max={todayISO()} onChange={(e) => setTo(e.target.value)} />
+          <HebrewDatePicker id="late-to" value={to} max={todayISO()} onChange={setTo} />
         </Field>
         <Field label="סף איחורים (ומעלה)" htmlFor="late-threshold" className="min-w-[9rem]">
           <Input

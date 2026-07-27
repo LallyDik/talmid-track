@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { DataTable, EmptyState, ConfirmDialog, StatusBadge, type Column } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -869,7 +870,7 @@ function StudentFormDialog({
                   <FormItem>
                     <FormLabel>תאריך לידה</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <HebrewDatePicker value={field.value ?? ""} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

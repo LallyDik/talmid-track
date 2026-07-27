@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { priorityLabels, taskStatusLabels, type TaskStatus } from "@/lib/hebrew";
@@ -241,12 +242,10 @@ export function TaskDialog({
 
             <div className="grid gap-1.5">
               <Label htmlFor="task-due">תאריך יעד</Label>
-              <Input
+              <HebrewDatePicker
                 id="task-due"
-                type="date"
                 value={values.due_date ?? ""}
-                onChange={(e) => set("due_date", e.target.value || null)}
-                aria-invalid={!!errors.due_date}
+                onChange={(iso) => set("due_date", iso || null)}
               />
               {errors.due_date && (
                 <p className="text-xs text-destructive">{errors.due_date}</p>

@@ -5,6 +5,7 @@ import { UserX, AlertTriangle } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { EmptyState, DataTable, type Column } from "@/components/kit";
 import { formatHebrewDate } from "@/lib/hebrew";
 import type { ReportDocument } from "@/services/reportExport";
@@ -155,10 +156,10 @@ export function AbsenceReport({ yeshivaId, yeshivaName }: ReportProps) {
     <div className="space-y-5">
       <FilterBar>
         <Field label="מתאריך" htmlFor="absence-from" className="min-w-[9rem]">
-          <Input id="absence-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          <HebrewDatePicker id="absence-from" value={from} max={to} onChange={setFrom} />
         </Field>
         <Field label="עד תאריך" htmlFor="absence-to" className="min-w-[9rem]">
-          <Input id="absence-to" type="date" value={to} max={todayISO()} onChange={(e) => setTo(e.target.value)} />
+          <HebrewDatePicker id="absence-to" value={to} max={todayISO()} onChange={setTo} />
         </Field>
         <Field label="סף היעדרויות (ומעלה)" htmlFor="absence-threshold" className="min-w-[9rem]">
           <Input

@@ -49,14 +49,13 @@ export function hebrewHoliday(date: Date): string | null {
       if (day === 18) return "ל״ג בעומר";
       break;
     case "סיוון":
-      if (day === 6 || day === 7) return "שבועות";
+      if (day === 6) return "שבועות";
       break;
     case "תמוז":
       if (day === 17) return "י״ז בתמוז";
       break;
     case "אב":
       if (day === 9) return "תשעה באב";
-      if (day === 15) return "ט״ו באב";
       break;
   }
   // אדר (שנה רגילה) או אדר ב׳ (שנה מעוברת) — פורים.

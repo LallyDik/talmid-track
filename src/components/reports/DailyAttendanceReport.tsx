@@ -4,6 +4,7 @@ import { CalendarClock, Users, CheckCircle2, Clock, XCircle } from "lucide-react
 
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import {
   Select,
   SelectContent,
@@ -174,12 +175,11 @@ export function DailyAttendanceReport({ yeshivaId, yeshivaName }: ReportProps) {
     <div className="space-y-5">
       <FilterBar>
         <Field label="תאריך" htmlFor="daily-date" className="min-w-[9rem]">
-          <Input
+          <HebrewDatePicker
             id="daily-date"
-            type="date"
             value={date}
             max={todayISO()}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
           />
         </Field>
         <Field label="סדר" className="min-w-[12rem]">

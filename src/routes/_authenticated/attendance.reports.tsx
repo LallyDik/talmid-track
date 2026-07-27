@@ -26,12 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  reportStatusLabels,
-  formatHebrewDate,
-  formatHebrewDateTime,
-  type ReportStatus,
-} from "@/lib/hebrew";
+import { reportStatusLabels, formatHebrewDateTime, type ReportStatus } from "@/lib/hebrew";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -254,29 +250,23 @@ function ReportsPage() {
             <Label htmlFor="date-from" className="text-xs text-muted-foreground">
               מתאריך
             </Label>
-            <Input
+            <HebrewDatePicker
               id="date-from"
-              type="date"
               value={dateFrom}
-              onChange={(e) => withPageReset(setDateFrom)(e.target.value)}
+              max={dateTo || undefined}
+              onChange={withPageReset(setDateFrom)}
             />
-            {dateFrom && (
-              <p className="text-[11px] text-muted-foreground">{formatHebrewDate(dateFrom)}</p>
-            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="date-to" className="text-xs text-muted-foreground">
               עד תאריך
             </Label>
-            <Input
+            <HebrewDatePicker
               id="date-to"
-              type="date"
               value={dateTo}
-              onChange={(e) => withPageReset(setDateTo)(e.target.value)}
+              min={dateFrom || undefined}
+              onChange={withPageReset(setDateTo)}
             />
-            {dateTo && (
-              <p className="text-[11px] text-muted-foreground">{formatHebrewDate(dateTo)}</p>
-            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">סדר לימוד</Label>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
+import { HebrewDatePicker } from "@/components/HebrewDatePicker";
 import { attendanceLabels, attendanceClass, type AttendanceStatus, studentStatusLabels, type StudentStatus } from "@/lib/hebrew";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -233,7 +234,7 @@ function StudentPage() {
           <div className="bg-card border border-border rounded-xl p-4 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input placeholder="כותרת" value={newTreatment.title} onChange={(e) => setNewTreatment({ ...newTreatment, title: e.target.value })} className="rounded-md border border-input px-3 py-2 bg-background" />
-              <input type="date" value={newTreatment.due_date} onChange={(e) => setNewTreatment({ ...newTreatment, due_date: e.target.value })} className="rounded-md border border-input px-3 py-2 bg-background" />
+              <HebrewDatePicker value={newTreatment.due_date} onChange={(iso) => setNewTreatment({ ...newTreatment, due_date: iso })} placeholder="תאריך יעד" />
               <button onClick={() => newTreatment.title.trim() && addTreatment.mutate()} className="rounded-md bg-primary text-primary-foreground px-4 py-2">פתח טיפול</button>
             </div>
           </div>
